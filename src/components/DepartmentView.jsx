@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Building2, CheckCircle2, Clock, Image as ImageIcon, MapPin, Upload, ShieldCheck, Check, X, ThumbsUp } from "lucide-react";
+import { Building2, CheckCircle2, Clock, Image as ImageIcon, MapPin, Upload, ShieldCheck, Check, X, ThumbsUp, User, ArrowRight } from "lucide-react";
 import { CATEGORY_LABELS } from "../utils/departmentAssigner";
 import { calculatePriority } from "../utils/priorityCalculator";
 
@@ -15,7 +15,10 @@ import { calculatePriority } from "../utils/priorityCalculator";
  * - complaints: Array of all complaints from App.jsx state
  * - onStatusChange: Function passed from App.jsx to mutate complaint status in top-level state
  */
-export default function DepartmentView({ complaints, onStatusChange }) {
+export default function DepartmentView({ complaints, onStatusChange, userName, setUserName }) {
+  // Input state for the login form field
+  const [loginInput, setLoginInput] = useState("");
+
   const [selectedDepartment, setSelectedDepartment] = useState("Public Works");
 
   // State to manage resolution proof modal for a specific complaint ID
@@ -24,6 +27,54 @@ export default function DepartmentView({ complaints, onStatusChange }) {
   const [resolutionPreview, setResolutionPreview] = useState(null);
 
   const DEPARTMENTS = ["Public Works", "Sanitation", "Electrical", "Water Supply"];
+
+  if (!userName) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center space-y-6">
+          <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mx-auto border border-purple-100">
+            <Building2 className="w-7 h-7" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Department Portal Sign-In</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your officer name to manage assigned municipal tickets and upload resolution proof.
+            </p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (loginInput.trim()) {
+                setUserName(loginInput.trim());
+              }
+            }}
+            className="space-y-4 text-left"
+          >
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Officer Name / ID
+              </label>
+              <input
+                type="text"
+                required
+                value={loginInput}
+                onChange={(e) => setLoginInput(e.target.value)}
+                placeholder="e.g. Officer Anita Roy"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl shadow-md shadow-purple-600/20 transition text-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Continue to Department Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const departmentComplaints = complaints.filter(
     (c) => c.department === selectedDepartment
@@ -92,22 +143,40 @@ export default function DepartmentView({ complaints, onStatusChange }) {
             </p>
           </div>
 
-          {/* Department Selection Dropdown */}
-          <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80">
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              Select Department Portal:
-            </label>
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full bg-slate-900 text-white font-medium border border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
-            >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept} Department
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* User Welcome Badge & Switch User Button */}
+            <div className="bg-slate-800/90 px-4 py-2.5 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-3 text-xs">
+              <span className="text-slate-300">
+                Welcome, <strong className="text-white font-semibold">{userName}</strong>
+              </span>
+              <button
+                onClick={() => {
+                  setUserName("");
+                  setLoginInput("");
+                }}
+                className="text-[11px] font-semibold text-blue-300 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/20 transition cursor-pointer"
+              >
+                Switch User
+              </button>
+            </div>
+
+            {/* Department Selection Dropdown */}
+            <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80">
+              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Select Department Portal:
+              </label>
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full bg-slate-900 text-white font-medium border border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+              >
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept} Department
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>

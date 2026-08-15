@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { ShieldCheck, Search, Filter, AlertCircle, Clock, CheckCircle2, Building2, MapPin, Map, Table } from "lucide-react";
+import { ShieldCheck, Search, Filter, AlertCircle, Clock, CheckCircle2, Building2, MapPin, Map, Table, BarChart3, User, ArrowRight } from "lucide-react";
 import { CATEGORY_LABELS } from "../utils/departmentAssigner";
 import { calculatePriority, isSLAOverdue } from "../utils/priorityCalculator";
 import AdminMapView from "./AdminMapView";
+import AdminAnalyticsView from "./AdminAnalyticsView";
 
 /**
  * AdminView Component
@@ -16,8 +17,11 @@ import AdminMapView from "./AdminMapView";
  * Props:
  * - complaints: Array of all complaints from App.jsx shared state
  */
-export default function AdminView({ complaints }) {
-  // Admin View Mode ('table' | 'map')
+export default function AdminView({ complaints, userName, setUserName }) {
+  // Input state for the login form field
+  const [loginInput, setLoginInput] = useState("");
+
+  // Admin View Mode ('table' | 'map' | 'analytics')
   const [viewMode, setViewMode] = useState("table");
 
   // Filter States
@@ -25,6 +29,54 @@ export default function AdminView({ complaints }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+
+  if (!userName) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center space-y-6">
+          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto border border-indigo-100">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Admin Dashboard Sign-In</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your administrator name to access city analytics and sector oversight.
+            </p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (loginInput.trim()) {
+                setUserName(loginInput.trim());
+              }
+            }}
+            className="space-y-4 text-left"
+          >
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Administrator Name
+              </label>
+              <input
+                type="text"
+                required
+                value={loginInput}
+                onChange={(e) => setLoginInput(e.target.value)}
+                placeholder="e.g. Director Verma"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl shadow-md shadow-indigo-600/20 transition text-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Continue to Admin Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   // Summary metrics dynamically calculated from complaints master array
   const totalCount = complaints.length;
@@ -64,8 +116,24 @@ export default function AdminView({ complaints }) {
           </p>
         </div>
 
-        {/* FEATURE: TABLE vs MAP VIEW SWITCHER */}
-        <div className="bg-slate-200 p-1.5 rounded-2xl flex items-center gap-1 border border-slate-300 self-start md:self-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs text-slate-600">
+              Welcome, <strong className="text-slate-900 font-semibold">{userName}</strong>
+            </span>
+            <button
+              onClick={() => {
+                setUserName("");
+                setLoginInput("");
+              }}
+              className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition cursor-pointer"
+            >
+              Switch User
+            </button>
+          </div>
+
+          {/* FEATURE: TABLE vs MAP vs ANALYTICS VIEW SWITCHER */}
+          <div className="bg-slate-200 p-1.5 rounded-2xl flex items-center gap-1 border border-slate-300 self-start md:self-auto flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setViewMode("table")}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -87,8 +155,20 @@ export default function AdminView({ complaints }) {
           >
             <Map className="w-4 h-4" /> Map & Heatmap View
           </button>
+
+          <button
+            onClick={() => setViewMode("analytics")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              viewMode === "analytics"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" /> Analytics View
+          </button>
         </div>
       </div>
+    </div>
 
       {/* METRICS CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -135,9 +215,11 @@ export default function AdminView({ complaints }) {
 
       </div>
 
-      {/* CONDITIONAL RENDERING: MAP VIEW vs TABLE VIEW */}
+      {/* CONDITIONAL RENDERING: MAP VIEW vs ANALYTICS VIEW vs TABLE VIEW */}
       {viewMode === "map" ? (
         <AdminMapView complaints={complaints} />
+      ) : viewMode === "analytics" ? (
+        <AdminAnalyticsView complaints={complaints} />
       ) : (
         <>
           {/* MULTI-FILTER DROPDOWNS BAR */}

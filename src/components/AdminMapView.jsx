@@ -134,12 +134,12 @@ export default function AdminMapView({ complaints }) {
         
         <MapContainer
           center={RANCHI_CENTER}
-          zoom={13}
+          zoom={13.5}
           scrollWheelZoom={true}
           style={{ height: "520px", width: "100%" }}
           className="rounded-2xl"
         >
-          {/* OpenStreetMap Tiles */}
+          {/* Tile Layer */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

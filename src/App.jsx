@@ -20,6 +20,11 @@ export default function App() {
   // Shared Complaints Array State initialized with sample data
   const [complaints, setComplaints] = useState(INITIAL_COMPLAINTS);
 
+  // Independent Login User Name States for each view (persisted across tab switches)
+  const [citizenName, setCitizenName] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [departmentName, setDepartmentName] = useState("");
+
   /**
    * Handler to Add a New Complaint (Called by CitizenView)
    * Auto-assigns department and generates random Ranchi geo-coordinates
@@ -36,6 +41,14 @@ export default function App() {
     const generatedLat = Number((baseLat + (Math.random() - 0.5) * 0.05).toFixed(5));
     const generatedLng = Number((baseLng + (Math.random() - 0.5) * 0.05).toFixed(5));
 
+    // Use explicit GPS coordinates if user provided them via Geolocation API, otherwise fallback to Ranchi offset
+    const finalLat = (newComplaintData.lat !== null && newComplaintData.lat !== undefined)
+      ? newComplaintData.lat
+      : generatedLat;
+    const finalLng = (newComplaintData.lng !== null && newComplaintData.lng !== undefined)
+      ? newComplaintData.lng
+      : generatedLng;
+
     const createdComplaint = {
       id: generatedId,
       category: newComplaintData.category,
@@ -47,8 +60,8 @@ export default function App() {
       upvotes: 0,
       createdAt: formattedDate,
       resolutionPhotoUrl: null,
-      lat: generatedLat,
-      lng: generatedLng,
+      lat: finalLat,
+      lng: finalLng,
     };
 
     setComplaints((prevComplaints) => [createdComplaint, ...prevComplaints]);
@@ -101,17 +114,25 @@ export default function App() {
             complaints={complaints}
             onAddComplaint={handleAddComplaint}
             onUpvote={handleUpvote}
+            userName={citizenName}
+            setUserName={setCitizenName}
           />
         )}
 
         {activeTab === "admin" && (
-          <AdminView complaints={complaints} />
+          <AdminView
+            complaints={complaints}
+            userName={adminName}
+            setUserName={setAdminName}
+          />
         )}
 
         {activeTab === "department" && (
           <DepartmentView
             complaints={complaints}
             onStatusChange={handleStatusChange}
+            userName={departmentName}
+            setUserName={setDepartmentName}
           />
         )}
       </main>
