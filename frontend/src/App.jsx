@@ -62,6 +62,8 @@ export default function App() {
       resolutionPhotoUrl: null,
       lat: finalLat,
       lng: finalLng,
+      reopenCount: 0,
+      createdBy: citizenName || "Anonymous Citizen",
     };
 
     setComplaints((prevComplaints) => [createdComplaint, ...prevComplaints]);
@@ -97,6 +99,28 @@ export default function App() {
     );
   };
 
+  /**
+   * Handler for Citizen Verification (Called by CitizenView)
+   * If approved -> status = "Resolved"
+   * If rejected -> status = "Pending", increment reopenCount
+   */
+  const handleVerifyResolution = (complaintId, isResolved) => {
+    setComplaints((prevComplaints) =>
+      prevComplaints.map((item) => {
+        if (item.id !== complaintId) return item;
+        if (isResolved) {
+          return { ...item, status: "Resolved" };
+        } else {
+          return {
+            ...item,
+            status: "Pending",
+            reopenCount: (item.reopenCount || 0) + 1,
+          };
+        }
+      })
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans antialiased">
       
@@ -114,6 +138,7 @@ export default function App() {
             complaints={complaints}
             onAddComplaint={handleAddComplaint}
             onUpvote={handleUpvote}
+            onVerifyResolution={handleVerifyResolution}
             userName={citizenName}
             setUserName={setCitizenName}
           />

@@ -82,6 +82,7 @@ export default function AdminView({ complaints, userName, setUserName }) {
   const totalCount = complaints.length;
   const pendingCount = complaints.filter((c) => c.status === "Pending").length;
   const inProgressCount = complaints.filter((c) => c.status === "In Progress").length;
+  const pendingVerificationCount = complaints.filter((c) => c.status === "Pending Verification").length;
   const resolvedCount = complaints.filter((c) => c.status === "Resolved").length;
 
   /**
@@ -171,45 +172,55 @@ export default function AdminView({ complaints, userName, setUserName }) {
     </div>
 
       {/* METRICS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Reported</p>
-            <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</h3>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Reported</p>
+            <h3 className="text-xl font-bold text-slate-900 mt-0.5">{totalCount}</h3>
           </div>
-          <div className="p-3 bg-slate-100 rounded-xl text-slate-700">
-            <AlertCircle className="w-6 h-6" />
+          <div className="p-2.5 bg-slate-100 rounded-xl text-slate-700">
+            <AlertCircle className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Pending Action</p>
-            <h3 className="text-2xl font-bold text-amber-900 mt-1">{pendingCount}</h3>
+            <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Pending Action</p>
+            <h3 className="text-xl font-bold text-amber-900 mt-0.5">{pendingCount}</h3>
           </div>
-          <div className="p-3 bg-amber-50 rounded-xl text-amber-600 border border-amber-100">
-            <Clock className="w-6 h-6" />
+          <div className="p-2.5 bg-amber-50 rounded-xl text-amber-600 border border-amber-100">
+            <Clock className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-blue-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">In Progress</p>
-            <h3 className="text-2xl font-bold text-blue-900 mt-1">{inProgressCount}</h3>
+            <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">In Progress</p>
+            <h3 className="text-xl font-bold text-blue-900 mt-0.5">{inProgressCount}</h3>
           </div>
-          <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-            <Clock className="w-6 h-6 animate-pulse" />
+          <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
+            <Clock className="w-5 h-5 animate-pulse" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-purple-200/80 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Resolved</p>
-            <h3 className="text-2xl font-bold text-emerald-900 mt-1">{resolvedCount}</h3>
+            <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Pending Verify</p>
+            <h3 className="text-xl font-bold text-purple-900 mt-0.5">{pendingVerificationCount}</h3>
           </div>
-          <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="p-2.5 bg-purple-50 rounded-xl text-purple-600 border border-purple-100">
+            <ShieldCheck className="w-5 h-5 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-emerald-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Resolved</p>
+            <h3 className="text-xl font-bold text-emerald-900 mt-0.5">{resolvedCount}</h3>
+          </div>
+          <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
 
@@ -266,6 +277,7 @@ export default function AdminView({ complaints, userName, setUserName }) {
                   <option value="all">All Statuses</option>
                   <option value="Pending">Pending Only</option>
                   <option value="In Progress">In Progress Only</option>
+                  <option value="Pending Verification">Pending Verification Only</option>
                   <option value="Resolved">Resolved Only</option>
                 </select>
               </div>
@@ -371,9 +383,20 @@ export default function AdminView({ complaints, userName, setUserName }) {
                                   In Progress
                                 </span>
                               )}
+                              {item.status === "Pending Verification" && (
+                                <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-purple-200">
+                                  Pending Verification
+                                </span>
+                              )}
                               {item.status === "Resolved" && (
                                 <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
                                   Resolved
+                                </span>
+                              )}
+
+                              {item.reopenCount > 0 && (
+                                <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-md border border-rose-200">
+                                  Reopened ({item.reopenCount}x)
                                 </span>
                               )}
 

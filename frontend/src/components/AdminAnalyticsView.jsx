@@ -12,14 +12,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { BarChart3, PieChart as PieIcon, Building2, Tag, Layers, CheckCircle2, Clock } from "lucide-react";
+import { BarChart3, PieChart as PieIcon, Building2, Tag, Layers, CheckCircle2, Clock, ShieldCheck } from "lucide-react";
 
 /**
  * AdminAnalyticsView Component
  * 
  * Computes analytics dynamically from the shared complaints array:
  * 1. Category Bar Chart: Pothole, Garbage, Streetlight, Water Leakage
- * 2. Status Pie Chart: Pending, In Progress, Resolved
+ * 2. Status Pie Chart: Pending, In Progress, Pending Verification, Resolved
  * 3. Department Workload Bar Chart: Public Works, Sanitation, Electrical, Water Supply
  */
 export default function AdminAnalyticsView({ complaints = [] }) {
@@ -44,9 +44,10 @@ export default function AdminAnalyticsView({ complaints = [] }) {
 
   // 2. DATA TRANSFORMATION: Status Distribution (Pie Chart)
   const STATUS_DEFINITIONS = [
-    { name: "Pending", color: "#F59E0B" },      // Amber
-    { name: "In Progress", color: "#2563EB" },  // Royal Blue
-    { name: "Resolved", color: "#10B981" },     // Emerald
+    { name: "Pending", color: "#F59E0B" },               // Amber
+    { name: "In Progress", color: "#2563EB" },           // Royal Blue
+    { name: "Pending Verification", color: "#8B5CF6" },   // Purple
+    { name: "Resolved", color: "#10B981" },              // Emerald
   ];
 
   const statusChartData = STATUS_DEFINITIONS.map((st) => {
@@ -257,7 +258,7 @@ export default function AdminAnalyticsView({ complaints = [] }) {
           </div>
 
           {/* Status Breakdown Legend Detail */}
-          <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-xs">
+          <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             <div className="bg-amber-50/60 p-2.5 rounded-xl border border-amber-100">
               <div className="flex items-center gap-1 text-amber-700 font-semibold mb-0.5">
                 <Clock className="w-3.5 h-3.5" /> Pending
@@ -273,6 +274,15 @@ export default function AdminAnalyticsView({ complaints = [] }) {
               </div>
               <p className="text-lg font-bold text-blue-900">
                 {statusChartData.find(s => s.name === "In Progress")?.value || 0}
+              </p>
+            </div>
+
+            <div className="bg-purple-50/60 p-2.5 rounded-xl border border-purple-100">
+              <div className="flex items-center gap-1 text-purple-700 font-semibold mb-0.5">
+                <ShieldCheck className="w-3.5 h-3.5 animate-pulse" /> Pending Verify
+              </div>
+              <p className="text-lg font-bold text-purple-900">
+                {statusChartData.find(s => s.name === "Pending Verification")?.value || 0}
               </p>
             </div>
 

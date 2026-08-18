@@ -109,6 +109,7 @@ export default function DepartmentView({ complaints, onStatusChange, userName, s
 
   /**
    * Confirm Resolution with Uploaded Proof Photo
+   * Transitions status to intermediate state "Pending Verification" for Citizen verification
    */
   const handleConfirmResolution = (complaintId) => {
     if (!resolutionPreview) {
@@ -116,8 +117,8 @@ export default function DepartmentView({ complaints, onStatusChange, userName, s
       return;
     }
 
-    // Call top-level status updater with resolution photo URL
-    onStatusChange(complaintId, "Resolved", resolutionPreview);
+    // Call top-level status updater with resolution photo URL and "Pending Verification" status
+    onStatusChange(complaintId, "Pending Verification", resolutionPreview);
 
     // Reset resolution modal state
     setResolvingComplaintId(null);
@@ -314,9 +315,22 @@ export default function DepartmentView({ complaints, onStatusChange, userName, s
                       </div>
                     </div>
 
-                    <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <div className="text-xs text-slate-500 flex items-center justify-between gap-2">
                       <span>Current Status:</span>
-                      <strong className="text-slate-900">{item.status}</strong>
+                      <div className="flex items-center gap-1.5">
+                        {item.reopenCount > 0 && (
+                          <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            Reopened ({item.reopenCount}x)
+                          </span>
+                        )}
+                        {item.status === "Pending Verification" ? (
+                          <span className="bg-purple-100 text-purple-800 border border-purple-200 font-semibold px-2 py-0.5 rounded-full text-[11px]">
+                            Pending Verification
+                          </span>
+                        ) : (
+                          <strong className="text-slate-900">{item.status}</strong>
+                        )}
+                      </div>
                     </div>
 
                     {/* FEATURE 5: RESOLUTION PROOF MODAL / INLINE FORM */}

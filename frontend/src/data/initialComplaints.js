@@ -19,6 +19,7 @@ export const INITIAL_COMPLAINTS = [
     createdAt: "2026-08-07 09:30 AM",
     lat: 23.3441,
     lng: 85.3096,
+    reopenCount: 0,
   },
   {
     id: "COMP-102",
@@ -32,6 +33,7 @@ export const INITIAL_COMPLAINTS = [
     createdAt: "2026-08-08 02:15 PM",
     lat: 23.3520,
     lng: 85.3210,
+    reopenCount: 0,
   },
   {
     id: "COMP-103",
@@ -46,6 +48,7 @@ export const INITIAL_COMPLAINTS = [
     resolutionPhotoUrl: "https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&w=600&q=80",
     lat: 23.3380,
     lng: 85.2980,
+    reopenCount: 0,
   },
   {
     id: "COMP-104",
@@ -59,5 +62,21 @@ export const INITIAL_COMPLAINTS = [
     createdAt: "2026-08-12 08:10 AM",
     lat: 23.3600,
     lng: 85.3400,
+    reopenCount: 0,
+  },
+  {
+    id: "COMP-105",
+    category: "pothole",
+    description: "Hazardous road crack near Market Square repaired by crew awaiting citizen verification.",
+    location: "Market Square, Main Rd, Ranchi",
+    photoUrl: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80",
+    status: "Pending Verification",
+    department: "Public Works",
+    upvotes: 5,
+    createdAt: "2026-08-10 11:00 AM",
+    resolutionPhotoUrl: "https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&w=600&q=80",
+    lat: 23.3480,
+    lng: 85.3150,
+    reopenCount: 0,
   },
 ];

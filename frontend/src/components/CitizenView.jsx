@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PlusCircle, Upload, MapPin, Tag, CheckCircle2, Clock, Image as ImageIcon, ThumbsUp, Navigation, AlertCircle, User, ArrowRight } from "lucide-react";
+import { PlusCircle, Upload, MapPin, Tag, CheckCircle2, Clock, Image as ImageIcon, ThumbsUp, Navigation, AlertCircle, User, ArrowRight, ShieldCheck, RotateCcw } from "lucide-react";
 import { CATEGORY_LABELS } from "../utils/departmentAssigner";
 
 /**
@@ -9,8 +9,9 @@ import { CATEGORY_LABELS } from "../utils/departmentAssigner";
  * - complaints: Array of complaint objects from App.jsx state
  * - onAddComplaint: Function passed from App.jsx to append new complaint to state
  * - onUpvote: Function passed from App.jsx to increment upvote count
+ * - onVerifyResolution: Function passed from App.jsx to verify or reopen pending verification complaints
  */
-export default function CitizenView({ complaints, onAddComplaint, onUpvote, userName, setUserName }) {
+export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVerifyResolution, userName, setUserName }) {
   // Input state for the login form field
   const [loginInput, setLoginInput] = useState("");
 
@@ -157,6 +158,12 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, user
         return (
           <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200">
             <Clock className="w-3.5 h-3.5 animate-spin text-blue-600" /> In Progress
+          </span>
+        );
+      case "Pending Verification":
+        return (
+          <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-purple-200">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600 animate-pulse" /> Pending Verification
           </span>
         );
       case "Resolved":
@@ -364,72 +371,183 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, user
             </div>
           ) : (
             <div className="space-y-4">
-              {complaints.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row gap-4"
-                >
-                  {/* Photo Thumbnail */}
-                  {item.photoUrl ? (
-                    <div className="w-full sm:w-28 h-28 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
-                      <img
-                        src={item.photoUrl}
-                        alt="Issue photo"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1590059306054-94a28f7ff282?auto=format&fit=crop&w=300&q=80";
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full sm:w-28 h-28 rounded-xl bg-slate-100 flex flex-col items-center justify-center text-slate-400 flex-shrink-0 border border-slate-200">
-                      <ImageIcon className="w-6 h-6 mb-1" />
-                      <span className="text-[10px]">No Photo</span>
-                    </div>
-                  )}
+              {complaints.map((item) => {
+                const isBelongingToCitizen = !item.createdBy || item.createdBy === userName;
+                const isPendingVerification = item.status === "Pending Verification";
 
-                  {/* Complaint Details */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="text-xs font-mono font-medium text-slate-400">{item.id}</span>
-                        <h4 className="text-base font-semibold text-slate-900 capitalize">
-                          {CATEGORY_LABELS[item.category] || item.category}
-                        </h4>
+                return (
+                  <div
+                    key={item.id}
+                    className={`bg-white p-5 rounded-2xl border transition-all flex flex-col gap-4 ${
+                      isPendingVerification && isBelongingToCitizen
+                        ? "border-purple-300 shadow-md ring-2 ring-purple-500/20"
+                        : "border-slate-200 shadow-sm hover:shadow-md"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      {/* Photo Thumbnail */}
+                      {item.photoUrl ? (
+                        <div className="w-full sm:w-28 h-28 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+                          <img
+                            src={item.photoUrl}
+                            alt="Issue photo"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = "https://images.unsplash.com/photo-1590059306054-94a28f7ff282?auto=format&fit=crop&w=300&q=80";
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full sm:w-28 h-28 rounded-xl bg-slate-100 flex flex-col items-center justify-center text-slate-400 flex-shrink-0 border border-slate-200">
+                          <ImageIcon className="w-6 h-6 mb-1" />
+                          <span className="text-[10px]">No Photo</span>
+                        </div>
+                      )}
+
+                      {/* Complaint Details */}
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono font-medium text-slate-400">{item.id}</span>
+                            <h4 className="text-base font-semibold text-slate-900 capitalize">
+                              {CATEGORY_LABELS[item.category] || item.category}
+                            </h4>
+                            {item.reopenCount > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-rose-200">
+                                <RotateCcw className="w-3 h-3 text-rose-600" /> Reopened ({item.reopenCount}x)
+                              </span>
+                            )}
+                          </div>
+                          <div>{getStatusBadge(item.status)}</div>
+                        </div>
+
+                        <p className="text-sm text-slate-700 leading-relaxed line-clamp-2">
+                          {item.description}
+                        </p>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              {item.location}
+                            </span>
+                            <span className="flex items-center gap-1 font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                              <Tag className="w-3.5 h-3.5" />
+                              {item.department}
+                            </span>
+                          </div>
+
+                          {/* UPVOTE BUTTON & COUNTER */}
+                          <button
+                            onClick={() => onUpvote(item.id)}
+                            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 shadow-sm cursor-pointer"
+                            title="Click to upvote this issue"
+                          >
+                            <ThumbsUp className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Upvote ({item.upvotes || 0})</span>
+                          </button>
+                        </div>
                       </div>
-                      <div>{getStatusBadge(item.status)}</div>
                     </div>
 
-                    <p className="text-sm text-slate-700 leading-relaxed line-clamp-2">
-                      {item.description}
-                    </p>
+                    {/* CITIZEN VERIFICATION SECTION (STAGE 2) */}
+                    {isPendingVerification && isBelongingToCitizen && (
+                      <div className="mt-1 bg-gradient-to-br from-purple-50 via-indigo-50/50 to-purple-50 border border-purple-200/90 rounded-2xl p-4 space-y-4 shadow-inner">
+                        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-purple-200/60">
+                          <div className="flex items-center gap-2 text-xs font-bold text-purple-900">
+                            <ShieldCheck className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                            <span>Citizen Verification Required — Please inspect the department's fix</span>
+                          </div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-700 bg-purple-100/90 px-2.5 py-0.5 rounded-full border border-purple-200">
+                            Stage 2 Verification
+                          </span>
+                        </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-3 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          {item.location}
-                        </span>
-                        <span className="flex items-center gap-1 font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                          <Tag className="w-3.5 h-3.5" />
-                          {item.department}
-                        </span>
+                        {/* Side-by-Side Photo Comparison */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Original Before Photo */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                              <span>📷 Before Photo (Original Report)</span>
+                            </div>
+                            <div className="h-40 rounded-xl overflow-hidden bg-slate-100 border border-slate-300/80 shadow-sm relative group">
+                              {item.photoUrl ? (
+                                <img
+                                  src={item.photoUrl}
+                                  alt="Original issue before photo"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = "https://images.unsplash.com/photo-1590059306054-94a28f7ff282?auto=format&fit=crop&w=300&q=80";
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                                  <ImageIcon className="w-6 h-6 mb-1" />
+                                  <span className="text-xs">No Before Photo Provided</span>
+                                </div>
+                              )}
+                              <span className="absolute bottom-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                Before Fix
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Department After Photo */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-700">
+                              <span>✨ After Photo (Department Proof)</span>
+                            </div>
+                            <div className="h-40 rounded-xl overflow-hidden bg-emerald-50 border border-emerald-300/80 shadow-sm relative group">
+                              {item.resolutionPhotoUrl ? (
+                                <img
+                                  src={item.resolutionPhotoUrl}
+                                  alt="Department after resolution photo"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center text-emerald-500">
+                                  <ImageIcon className="w-6 h-6 mb-1" />
+                                  <span className="text-xs">No After Photo Provided</span>
+                                </div>
+                              )}
+                              <span className="absolute bottom-2 left-2 bg-emerald-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                After Fix
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Decision Action Buttons */}
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-purple-200/60">
+                          <p className="text-xs text-slate-700 font-medium">
+                            Has this issue been satisfactorily resolved in reality?
+                          </p>
+
+                          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                            <button
+                              type="button"
+                              onClick={() => onVerifyResolution && onVerifyResolution(item.id, true)}
+                              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <span>✅ Yes, Resolved</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onVerifyResolution && onVerifyResolution(item.id, false)}
+                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-md shadow-rose-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <span>❌ No, Still Exists</span>
+                            </button>
+                          </div>
+                        </div>
+
                       </div>
-
-                      {/* FEATURE 1: UPVOTE BUTTON & COUNTER */}
-                      <button
-                        onClick={() => onUpvote(item.id)}
-                        className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 shadow-sm"
-                        title="Click to upvote this issue"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Upvote ({item.upvotes || 0})</span>
-                      </button>
-                    </div>
+                    )}
 
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

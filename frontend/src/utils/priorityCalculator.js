@@ -44,9 +44,10 @@ export function getDaysSinceCreated(createdAtStr) {
 export function calculatePriority(complaint) {
   const upvotes = complaint.upvotes || 0;
   const daysOpen = getDaysSinceCreated(complaint.createdAt);
+  const reopenPenalty = (complaint.reopenCount || 0) * 5;
   
-  // Priority Score Formula requested by hackathon problem statement:
-  const score = upvotes * 3 + daysOpen * 2;
+  // Priority Score Formula: Upvotes * 3 + Days Open * 2 + Reopen Count * 5
+  const score = upvotes * 3 + daysOpen * 2 + reopenPenalty;
 
   let label = "Low";
   let colorClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
