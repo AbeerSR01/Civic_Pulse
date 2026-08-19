@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { PlusCircle, Upload, MapPin, Tag, CheckCircle2, Clock, Image as ImageIcon, ThumbsUp, Navigation, AlertCircle, User, ArrowRight, ShieldCheck, RotateCcw } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { PlusCircle, Upload, MapPin, Tag, CheckCircle2, Clock, Image as ImageIcon, ThumbsUp, Navigation, AlertCircle, User, ArrowRight, ShieldCheck, RotateCcw, Check } from "lucide-react";
 import { CATEGORY_LABELS } from "../utils/departmentAssigner";
 
 /**
@@ -31,6 +31,53 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVe
 
   // Success message toast state
   const [successMessage, setSuccessMessage] = useState("");
+
+  // Track complaints already upvoted by this user (persisted in localStorage)
+  const [votedIds, setVotedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`civic_upvotes_${userName || "default"}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (userName) {
+      try {
+        const saved = localStorage.getItem(`civic_upvotes_${userName}`);
+        if (saved) setVotedIds(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
+    }
+  }, [userName]);
+
+  const handleCitizenUpvote = async (complaintId) => {
+    if (votedIds.includes(complaintId)) {
+      setSuccessMessage("You have already upvoted this complaint.");
+      setTimeout(() => setSuccessMessage(""), 4000);
+      return;
+    }
+
+    const result = await onUpvote(complaintId);
+    
+    // Update local set of voted IDs
+    const updated = [...votedIds, complaintId];
+    setVotedIds(updated);
+    try {
+      localStorage.setItem(`civic_upvotes_${userName || "default"}`, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+
+    if (result?.alreadyUpvoted) {
+      setSuccessMessage("Your upvote was already recorded in the database.");
+    } else {
+      setSuccessMessage("Upvote recorded! Issue priority score increased.");
+    }
+    setTimeout(() => setSuccessMessage(""), 4000);
+  };
 
   if (!userName) {
     return (
@@ -88,13 +135,47 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVe
     }
 
     setGeoStatus("loading");
+    setGeoMessage("Detecting location & fetching address...");
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
+        // Preserve coordinates in React state for Leaflet maps, heatmaps, and duplicate detection
         setCoords({ lat: latitude, lng: longitude });
-        setGeoStatus("captured");
-        setGeoMessage(`📍 Location captured (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+
+        try {
+          // Reverse geocode coordinates using OpenStreetMap Nominatim API
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                Accept: "application/json",
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Nominatim reverse geocode error: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data && data.display_name) {
+            // Automatically populate human-readable address into the editable input
+            setLocation(data.display_name);
+            setGeoStatus("captured");
+            setGeoMessage("📍 Location captured");
+          } else {
+            // Reverse geocoding returned no address, but keep GPS coordinates
+            setGeoStatus("geo_only");
+            setGeoMessage("📍 GPS coordinates captured, but address could not be detected. Please enter address manually.");
+          }
+        } catch (error) {
+          console.warn("Reverse geocoding error:", error);
+          // Keep GPS coordinates intact even if reverse geocoding fails or times out
+          setGeoStatus("geo_only");
+          setGeoMessage("📍 GPS coordinates captured, but address could not be detected. Please enter address manually.");
+        }
       },
       (error) => {
         console.warn("Geolocation permission or position error:", error.message);
@@ -257,7 +338,7 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVe
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg transition disabled:opacity-50 cursor-pointer"
                   >
                     <Navigation className={`w-3 h-3 text-blue-600 ${geoStatus === "loading" ? "animate-spin" : ""}`} />
-                    <span>{geoStatus === "loading" ? "Locating..." : "📍 Use My Current Location"}</span>
+                    <span>{geoStatus === "loading" ? "Fetching Address..." : "📍 Use My Current Location"}</span>
                   </button>
                 </div>
 
@@ -280,6 +361,13 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVe
                   <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1 mt-1.5 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
                     <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>📍 Location captured</span>
+                  </p>
+                )}
+
+                {geoStatus === "geo_only" && (
+                  <p className="text-xs text-blue-800 bg-blue-50 p-2.5 rounded-lg border border-blue-200 flex items-center gap-1.5 mt-1.5">
+                    <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span>📍 GPS coordinates captured, but address could not be auto-detected. You can type the address manually.</span>
                   </p>
                 )}
 
@@ -438,14 +526,27 @@ export default function CitizenView({ complaints, onAddComplaint, onUpvote, onVe
                           </div>
 
                           {/* UPVOTE BUTTON & COUNTER */}
-                          <button
-                            onClick={() => onUpvote(item.id)}
-                            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 shadow-sm cursor-pointer"
-                            title="Click to upvote this issue"
-                          >
-                            <ThumbsUp className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Upvote ({item.upvotes || 0})</span>
-                          </button>
+                          {votedIds.includes(item.id) || votedIds.includes(item.ticketId) || votedIds.includes(item.dbId) ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-300 shadow-xs cursor-default"
+                              title="You have already upvoted this issue"
+                            >
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Upvoted ({item.upvotes || item.upvoteCount || 0})</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleCitizenUpvote(item.id || item.ticketId)}
+                              className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 shadow-sm cursor-pointer"
+                              title="Click to upvote this issue"
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Upvote ({item.upvotes || item.upvoteCount || 0})</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

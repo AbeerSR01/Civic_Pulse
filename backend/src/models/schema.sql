@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS complaints (
     address TEXT NOT NULL,
     lat DOUBLE PRECISION DEFAULT 23.3441,
     lng DOUBLE PRECISION DEFAULT 85.3096,
-    status VARCHAR(50) DEFAULT 'Reported' CHECK (status IN ('Reported', 'Pending', 'Assigned', 'In Progress', 'Resolved')),
+    status VARCHAR(50) DEFAULT 'Reported' CHECK (status IN ('Reported', 'Pending', 'Assigned', 'In Progress', 'Pending Verification', 'Resolved')),
     department VARCHAR(100) NOT NULL,
     reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     citizen_name VARCHAR(150) DEFAULT 'Anonymous Citizen',
@@ -50,11 +50,12 @@ CREATE TABLE IF NOT EXISTS complaints (
     resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     resolved_at TIMESTAMP WITH TIME ZONE,
     resolution_remarks TEXT,
+    reopen_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Upvotes Table (Prevents duplicate upvoting per user)
+-- 4. Upvotes Table (Prevents duplicate upvoting per user via UNIQUE constraint)
 CREATE TABLE IF NOT EXISTS complaint_upvotes (
     id SERIAL PRIMARY KEY,
     complaint_id INTEGER NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
