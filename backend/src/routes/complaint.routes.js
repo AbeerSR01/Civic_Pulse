@@ -38,11 +38,10 @@ router.get("/", getComplaintsHandler);
 // GET /api/complaints/:id - Get a single complaint by MongoDB ObjectId or Ticket ID ("COMP-101")
 router.get("/:id", getComplaintByIdHandler);
 
-// PATCH /api/complaints/:id/status - Update complaint status (Admin or Department Staff)
+// PATCH /api/complaints/:id/status - Update complaint status (Admin, Department Staff, or Citizen Verification)
 router.patch(
   "/:id/status",
-  verifyToken,
-  requireRole("admin", "department"),
+  optionalAuth,
   updateComplaintStatusHandler
 );
 

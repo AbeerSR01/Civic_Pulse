@@ -6,6 +6,8 @@
  */
 
 import Complaint from "../models/Complaint.js";
+import User from "../models/User.js";
+import { query } from "../config/db.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { ApiError } from "../utils/apiError.js";
 import {
@@ -190,15 +192,22 @@ export async function getComplaintByIdHandler(req, res, next) {
 /**
  * @route   PATCH /api/complaints/:id/status
  * @desc    Update complaint status
- * @access  Private (Admin or Department Staff)
+ * @access  Private / Authenticated
  */
 export async function updateComplaintStatusHandler(req, res, next) {
   try {
     const { id } = req.params;
-    const { status, remarks, officerName, resolutionProofUrl } = req.body;
+    const { status, remarks, officerName, resolutionProofUrl, resolutionPhotoUrl, isResolved } = req.body;
 
-    const allowedStatuses = ["Reported", "Pending", "Assigned", "In Progress", "Resolved"];
-    if (!status || !allowedStatuses.includes(status)) {
+    const allowedStatuses = ["Reported", "Pending", "Assigned", "In Progress", "Pending Verification", "Resolved"];
+    
+    // Support boolean isResolved if sent from citizen verification
+    let targetStatus = status;
+    if (!targetStatus && isResolved !== undefined) {
+      targetStatus = isResolved ? "Resolved" : "Pending";
+    }
+
+    if (!targetStatus || !allowedStatuses.includes(targetStatus)) {
       throw new ApiError(400, `Invalid status. Allowed values: [${allowedStatuses.join(", ")}]`);
     }
 
@@ -208,25 +217,35 @@ export async function updateComplaintStatusHandler(req, res, next) {
     }
 
     const previousStatus = existing.status;
-    const finalResolutionUrl = resolutionProofUrl || req.body.resolutionProofUrl || existing.resolutionProofUrl;
+    const finalResolutionUrl = resolutionProofUrl || resolutionPhotoUrl || req.body.photoUrl || existing.resolutionProofUrl || existing.resolutionPhotoUrl;
 
-    if (status === "Resolved" && !finalResolutionUrl) {
+    if (targetStatus === "Resolved" && !finalResolutionUrl && !existing.resolutionProofUrl) {
       throw new ApiError(400, "Resolution proof photo is required when marking a complaint as Resolved.");
     }
 
-    const updatedComplaint = await Complaint.updateStatus(id, {
-      status,
+    const updatedComplaint = await Complaint.updateStatus(existing._id || existing.dbId || existing.id, {
+      status: targetStatus,
       remarks,
       officerName: officerName || req.user?.name || "Department Officer",
       changedBy: req.user ? req.user.id : null,
       resolutionProofUrl: finalResolutionUrl,
     });
 
+    // If citizen reopens the complaint, increment reopen_count
+    if (previousStatus === "Pending Verification" && targetStatus === "Pending") {
+      await query(
+        "UPDATE complaints SET reopen_count = COALESCE(reopen_count, 0) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+        [existing._id || existing.dbId || existing.id]
+      );
+    }
+
+    const refreshed = await Complaint.findById(existing._id || existing.dbId || existing.id);
+
     // Trigger Status Changed Hook
-    await onComplaintStatusChangedHook(updatedComplaint, previousStatus, status, req.user);
+    await onComplaintStatusChangedHook(refreshed, previousStatus, targetStatus, req.user);
 
     return res.status(200).json(
-      new ApiResponse(200, updatedComplaint, `Complaint status updated to '${status}' successfully`)
+      new ApiResponse(200, refreshed, `Complaint status updated to '${targetStatus}' successfully`)
     );
   } catch (error) {
     next(error);
@@ -235,8 +254,8 @@ export async function updateComplaintStatusHandler(req, res, next) {
 
 /**
  * @route   POST /api/complaints/:id/upvote
- * @desc    Upvote a complaint (prevents duplicate upvotes per user)
- * @access  Public / Private
+ * @desc    Upvote a complaint (prevents duplicate upvotes per user via UNIQUE constraint)
+ * @access  Public / Authenticated
  */
 export async function upvoteComplaintHandler(req, res, next) {
   try {
@@ -247,17 +266,36 @@ export async function upvoteComplaintHandler(req, res, next) {
       throw new ApiError(404, `Complaint with ID '${id}' not found`);
     }
 
-    const userId = req.user ? req.user.id : null;
-    const result = await Complaint.addUpvote(existing.id, userId);
+    // Resolve user ID from JWT auth token, body, or citizenName header
+    let userId = req.user ? req.user.id : (req.body.userId ? Number(req.body.userId) : null);
+
+    if (!userId) {
+      const citizenName = (req.body.citizenName || req.headers["x-citizen-name"] || req.body.userName || "Rahul Sharma").trim();
+      const citizenSlug = citizenName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const citizenEmail = req.body.email || `${citizenSlug || "citizen"}@civicpulse.org`;
+
+      let user = await User.findByEmail(citizenEmail);
+      if (!user) {
+        user = await User.create({
+          name: citizenName,
+          email: citizenEmail,
+          passwordHash: "$2a$10$demoHashForCitizenAutoCreation1234567890",
+          role: "citizen",
+        });
+      }
+      userId = user.id;
+    }
+
+    const result = await Complaint.addUpvote(existing._id || existing.dbId || existing.id, userId);
 
     if (result.alreadyUpvoted) {
       throw new ApiError(409, "You have already upvoted this complaint.");
     }
 
     // Trigger upvote hook to recalculate priority score
-    await onComplaintUpvotedHook(result.complaint, req.user);
+    await onComplaintUpvotedHook(result.complaint, req.user || { id: userId });
 
-    const refreshed = await Complaint.findById(existing.id);
+    const refreshed = await Complaint.findById(existing._id || existing.dbId || existing.id);
 
     return res.status(200).json(
       new ApiResponse(
@@ -266,7 +304,9 @@ export async function upvoteComplaintHandler(req, res, next) {
           id: refreshed.id,
           ticketId: refreshed.ticketId,
           upvoteCount: refreshed.upvoteCount,
+          upvotes: refreshed.upvotes,
           priorityScore: refreshed.priorityScore,
+          upvoteUserIds: refreshed.upvoteUserIds,
         },
         "Complaint upvoted successfully"
       )

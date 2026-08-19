@@ -15,18 +15,18 @@ export const Complaint = {
     if (!row) return null;
     return {
       _id: row.id,
-      id: row.id,
+      id: row.ticket_id || `COMP-${row.id}`,
+      dbId: row.id,
       ticketId: row.ticket_id,
       title: row.title,
       category: row.category,
       description: row.description,
       photoUrl: row.photo_url,
-      location: {
-        address: row.address,
-        lat: Number(row.lat),
-        lng: Number(row.lng),
-      },
-      status: row.status,
+      location: row.address,
+      address: row.address,
+      lat: Number(row.lat !== undefined && row.lat !== null ? row.lat : 23.3441),
+      lng: Number(row.lng !== undefined && row.lng !== null ? row.lng : 85.3096),
+      status: row.status || "Pending",
       department: row.department,
       reportedBy: row.reported_by
         ? {
@@ -38,10 +38,13 @@ export const Complaint = {
           }
         : null,
       citizenName: row.citizen_name || "Anonymous Citizen",
+      createdBy: row.citizen_name || "Anonymous Citizen",
       upvoteCount: Number(row.upvote_count || 0),
-      upvotes: row.upvote_user_ids ? row.upvote_user_ids.filter(Boolean) : [],
+      upvotes: Number(row.upvote_count || 0),
+      upvoteUserIds: row.upvote_user_ids ? row.upvote_user_ids.filter(Boolean) : [],
       priorityScore: Number(row.priority_score || 0),
       slaDeadline: row.sla_deadline,
+      resolutionPhotoUrl: row.resolution_proof_url,
       resolutionProofUrl: row.resolution_proof_url,
       resolvedBy: row.resolved_by
         ? {
@@ -53,6 +56,7 @@ export const Complaint = {
         : null,
       resolvedAt: row.resolved_at,
       resolutionRemarks: row.resolution_remarks,
+      reopenCount: Number(row.reopen_count || 0),
       statusHistory: row.status_history || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -344,23 +348,38 @@ export const Complaint = {
   /**
    * Cast an upvote (avoids duplicate per user)
    */
-  async addUpvote(complaintId, userId) {
-    // If user is logged in, insert unique pair
-    if (userId) {
-      const checkRes = await query(
-        "SELECT id FROM complaint_upvotes WHERE complaint_id = $1 AND user_id = $2",
-        [complaintId, userId]
-      );
-      if (checkRes.rows.length > 0) {
-        return { alreadyUpvoted: true, complaint: await this.findById(complaintId) };
-      }
-      await query(
-        "INSERT INTO complaint_upvotes (complaint_id, user_id) VALUES ($1, $2)",
-        [complaintId, userId]
-      );
+  async addUpvote(idOrTicket, userId) {
+    const complaint = await this.findById(idOrTicket);
+    if (!complaint) return null;
+
+    // If no user provided, return existing state
+    if (!userId) {
+      return { alreadyUpvoted: false, complaint };
     }
 
-    const updated = await this.findById(complaintId);
+    const dbId = complaint.dbId || complaint._id || (typeof complaint.id === "number" ? complaint.id : 1);
+
+    try {
+      const insertSql = `
+        INSERT INTO complaint_upvotes (complaint_id, user_id)
+        VALUES ($1, $2)
+        ON CONFLICT (complaint_id, user_id) DO NOTHING
+        RETURNING id
+      `;
+      const res = await query(insertSql, [dbId, userId]);
+
+      // If rowCount is 0, duplicate upvote prevented by UNIQUE(complaint_id, user_id)
+      if (res.rowCount === 0) {
+        return { alreadyUpvoted: true, complaint: await this.findById(dbId) };
+      }
+    } catch (err) {
+      if (err.code === "23505") {
+        return { alreadyUpvoted: true, complaint: await this.findById(dbId) };
+      }
+      throw err;
+    }
+
+    const updated = await this.findById(dbId);
     return { alreadyUpvoted: false, complaint: updated };
   },
 

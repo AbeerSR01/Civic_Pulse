@@ -95,6 +95,14 @@ async function seedDatabase() {
       phoneNumber: "+91 98765 43212",
     });
 
+    const citizen2 = await User.create({
+      name: "Priya Patel",
+      email: "priya@civicpulse.org",
+      passwordHash: demoPasswordHash,
+      role: "citizen",
+      phoneNumber: "+91 98765 43213",
+    });
+
     // 3. Seed Initial Ranchi Complaints
     console.log("📋 [Seed] Creating Initial Complaints (Ranchi Sector)...");
 
@@ -115,6 +123,7 @@ async function seedDatabase() {
       slaDeadline: new Date(Date.now() - 1000 * 3600 * 24), // SLA breached
     });
     await Complaint.addUpvote(comp1.id, citizen.id);
+    await Complaint.addUpvote(comp1.id, citizen2.id);
 
     const comp2 = await Complaint.create({
       ticketId: "COMP-102",
@@ -125,13 +134,14 @@ async function seedDatabase() {
       lat: 23.3520,
       lng: 85.3210,
       photoUrl: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=600&q=80",
-      status: "Reported",
+      status: "Pending",
       department: "Sanitation",
       reportedBy: citizen.id,
       citizenName: citizen.name,
       priorityScore: 9,
       slaDeadline: new Date(Date.now() + 1000 * 3600 * 24 * 2),
     });
+    await Complaint.addUpvote(comp2.id, citizen.id);
 
     const comp3 = await Complaint.create({
       ticketId: "COMP-103",
@@ -167,12 +177,37 @@ async function seedDatabase() {
       lat: 23.3600,
       lng: 85.3400,
       photoUrl: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b2?auto=format&fit=crop&w=600&q=80",
-      status: "Reported",
+      status: "Pending",
       department: "Water Supply",
       reportedBy: citizen.id,
       citizenName: citizen.name,
       priorityScore: 3,
       slaDeadline: new Date(Date.now() + 1000 * 3600 * 24 * 3),
+    });
+
+    const comp5 = await Complaint.create({
+      ticketId: "COMP-105",
+      title: "Hazardous Road Crack near Market Square",
+      category: "pothole",
+      description: "Hazardous road crack near Market Square repaired by crew awaiting citizen verification.",
+      address: "Market Square, Main Rd, Ranchi",
+      lat: 23.3480,
+      lng: 85.3150,
+      photoUrl: "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80",
+      status: "Pending Verification",
+      department: "Public Works",
+      reportedBy: citizen.id,
+      citizenName: citizen.name,
+      priorityScore: 15,
+      slaDeadline: new Date(Date.now() - 1000 * 3600 * 12),
+    });
+    await Complaint.addUpvote(comp5.id, citizen.id);
+    await Complaint.updateStatus(comp5.id, {
+      status: "Pending Verification",
+      remarks: "Crew completed asphalt sealing and resurfacing. Awaiting citizen verification.",
+      officerName: officer.name,
+      changedBy: officer.id,
+      resolutionProofUrl: "https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&w=600&q=80",
     });
 
     console.log(`

@@ -338,7 +338,7 @@ export async function initDB() {
         address TEXT NOT NULL,
         lat DOUBLE PRECISION DEFAULT 23.3441,
         lng DOUBLE PRECISION DEFAULT 85.3096,
-        status VARCHAR(50) DEFAULT 'Reported' CHECK (status IN ('Reported', 'Pending', 'Assigned', 'In Progress', 'Resolved')),
+        status VARCHAR(50) DEFAULT 'Reported' CHECK (status IN ('Reported', 'Pending', 'Assigned', 'In Progress', 'Pending Verification', 'Resolved')),
         department VARCHAR(100) NOT NULL,
         reported_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         citizen_name VARCHAR(150) DEFAULT 'Anonymous Citizen',
@@ -348,6 +348,7 @@ export async function initDB() {
         resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         resolved_at TIMESTAMP WITH TIME ZONE,
         resolution_remarks TEXT,
+        reopen_count INTEGER DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -638,13 +639,36 @@ function executeDevQuery(text, params = []) {
   }
 
   if (sql.includes("INSERT INTO complaint_upvotes")) {
-    const [complaintId, userId] = params.map(Number);
-    memDB.upvotes.push({
+    const rawComplaintId = params[0];
+    const userId = Number(params[1]);
+
+    const comp = memDB.complaints.find(
+      (c) => c.id === Number(rawComplaintId) || (c.ticket_id || "").toUpperCase() === String(rawComplaintId).toUpperCase()
+    );
+    const resolvedCompId = comp ? comp.id : Number(rawComplaintId);
+
+    const existing = memDB.upvotes.find((u) => u.complaint_id === resolvedCompId && u.user_id === userId);
+    if (existing) {
+      // Conflict simulated
+      return { rows: [], rowCount: 0 };
+    }
+    const newUpvote = {
       id: memDB.nextUpvoteId++,
-      complaint_id: complaintId,
+      complaint_id: resolvedCompId,
       user_id: userId,
       createdAt: new Date(),
-    });
+    };
+    memDB.upvotes.push(newUpvote);
+    return { rows: [{ id: newUpvote.id }], rowCount: 1 };
+  }
+
+  if (sql.includes("UPDATE complaints SET reopen_count")) {
+    const [complaintId] = params;
+    const item = memDB.complaints.find((c) => c.id === Number(complaintId));
+    if (item) {
+      item.reopen_count = (item.reopen_count || 0) + 1;
+      item.updated_at = new Date();
+    }
     return { rows: [], rowCount: 1 };
   }
 
