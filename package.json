@@ -1,0 +1,13 @@
+{
+  "name": "civic-pulse",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"frontend,backend\" -c \"cyan,magenta\" \"npm run dev:frontend --prefix frontend\" \"npm run dev --prefix backend\"",
+    "frontend": "npm run dev:frontend --prefix frontend",
+    "backend": "npm run dev --prefix backend",
+    "seed": "npm run seed --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
