@@ -15,20 +15,17 @@ import {
 import { BarChart3, PieChart as PieIcon, Building2, Tag, Layers, CheckCircle2, Clock, ShieldCheck } from "lucide-react";
 
 /**
- * AdminAnalyticsView Component
+ * Modern Minimalist AdminAnalyticsView Component
  * 
- * Computes analytics dynamically from the shared complaints array:
- * 1. Category Bar Chart: Pothole, Garbage, Streetlight, Water Leakage
- * 2. Status Pie Chart: Pending, In Progress, Pending Verification, Resolved
- * 3. Department Workload Bar Chart: Public Works, Sanitation, Electrical, Water Supply
+ * Premium Monochrome + Signature Orange (#FF6B00) Accent
  */
 export default function AdminAnalyticsView({ complaints = [] }) {
-  // 1. DATA TRANSFORMATION: Category Distribution
+  // Category Definitions
   const CATEGORY_DEFINITIONS = [
-    { key: "pothole", label: "Pothole", color: "#4F46E5" },       // Indigo
-    { key: "garbage", label: "Garbage", color: "#F59E0B" },       // Amber
-    { key: "streetlight", label: "Streetlight", color: "#0284C7" }, // Sky Blue
-    { key: "water", label: "Water Leakage", color: "#0D9488" },   // Teal
+    { key: "pothole", label: "Pothole", color: "#FF6B00" },       // Signature Orange
+    { key: "garbage", label: "Garbage", color: "#111111" },       // Deep Black
+    { key: "streetlight", label: "Streetlight", color: "#FF9E4D" }, // Warm Accent
+    { key: "water", label: "Water Leak", color: "#6B6B6B" },      // Medium Grey
   ];
 
   const categoryChartData = CATEGORY_DEFINITIONS.map((cat) => {
@@ -42,12 +39,12 @@ export default function AdminAnalyticsView({ complaints = [] }) {
     };
   });
 
-  // 2. DATA TRANSFORMATION: Status Distribution (Pie Chart)
+  // Status Definitions
   const STATUS_DEFINITIONS = [
-    { name: "Pending", color: "#F59E0B" },               // Amber
-    { name: "In Progress", color: "#2563EB" },           // Royal Blue
-    { name: "Pending Verification", color: "#8B5CF6" },   // Purple
-    { name: "Resolved", color: "#10B981" },              // Emerald
+    { name: "Pending", color: "#6B6B6B" },               // Medium Grey
+    { name: "In Progress", color: "#FF6B00" },           // Signature Orange
+    { name: "Pending Verification", color: "#111111" },   // Deep Black
+    { name: "Resolved", color: "#10B981" },              // Green
   ];
 
   const statusChartData = STATUS_DEFINITIONS.map((st) => {
@@ -60,13 +57,16 @@ export default function AdminAnalyticsView({ complaints = [] }) {
   });
 
   const totalComplaintsCount = complaints.length;
+  const resolutionRate = totalComplaintsCount > 0
+    ? ((complaints.filter(c => c.status === "Resolved").length / totalComplaintsCount) * 100).toFixed(0)
+    : 0;
 
-  // 3. DATA TRANSFORMATION: Department Workload (Bar Chart)
+  // Department Workload Definitions
   const DEPARTMENT_LIST = [
-    { name: "Public Works", color: "#4338CA" },  // Deep Indigo
-    { name: "Sanitation", color: "#7C3AED" },    // Purple
-    { name: "Electrical", color: "#1D4ED8" },    // Blue
-    { name: "Water Supply", color: "#0891B2" },  // Cyan
+    { name: "Public Works", color: "#FF6B00" },
+    { name: "Sanitation", color: "#111111" },
+    { name: "Electrical", color: "#FF9E4D" },
+    { name: "Water Supply", color: "#6B6B6B" },
   ];
 
   const departmentChartData = DEPARTMENT_LIST.map((dept) => {
@@ -85,17 +85,17 @@ export default function AdminAnalyticsView({ complaints = [] }) {
     };
   });
 
-  // Custom Tooltip Component for styled popovers
+  // Modern Clean Tooltip Component
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const dataItem = payload[0];
       return (
-        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs border border-slate-700">
-          <p className="font-semibold">{label || dataItem.name}</p>
-          <p className="text-slate-300 mt-1">
-            Complaints: <span className="font-bold text-white">{dataItem.value}</span>
-            {totalComplaintsCount > 0 && dataItem.name && (
-              <span className="text-slate-400 ml-1">
+        <div className="bg-white p-3 rounded-xl shadow-lg border border-[#E5E5E5] text-xs">
+          <p className="font-extrabold text-[#111111]">{label || dataItem.name}</p>
+          <p className="text-[#6B6B6B] mt-0.5">
+            Total Issues: <span className="font-bold text-[#111111]">{dataItem.value}</span>
+            {totalComplaintsCount > 0 && dataItem.value !== undefined && (
+              <span className="text-[#6B6B6B] ml-1">
                 ({((dataItem.value / totalComplaintsCount) * 100).toFixed(1)}%)
               </span>
             )}
@@ -107,82 +107,85 @@ export default function AdminAnalyticsView({ complaints = [] }) {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner / Summary */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800">
+    <div className="space-y-6">
+      
+      {/* Top SaaS Insights Card */}
+      <div className="bg-white rounded-2xl p-6 border border-[#E5E5E5] shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">
-              <Layers className="w-3.5 h-3.5" /> Live Data Insights
-            </span>
-            <h3 className="text-xl font-bold">Executive Analytics Overview</h3>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF1E6] text-[#FF6B00] border border-[#FF6B00]/30">
+                <Layers className="w-3.5 h-3.5" /> Municipal Operational Insights
+              </span>
+            </div>
+            <h3 className="text-lg font-extrabold text-[#111111]">Executive Analytics & Workload Balance</h3>
+            <p className="text-xs text-[#6B6B6B] mt-1 max-w-2xl">
               Real-time aggregation of {totalComplaintsCount} municipal reports across city sectors, category classifications, and operational status lifecycles.
             </p>
           </div>
-          
-          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-3 rounded-xl border border-white/10 self-start md:self-auto">
-            <div className="text-center px-2">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase">Total Issues</p>
-              <p className="text-lg font-extrabold text-white">{totalComplaintsCount}</p>
+
+          <div className="flex items-center gap-3 bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E5E5] self-start md:self-auto">
+            <div className="text-center px-3">
+              <p className="text-[10px] text-[#6B6B6B] font-bold uppercase">Total Issues</p>
+              <p className="text-base font-extrabold text-[#111111]">{totalComplaintsCount}</p>
             </div>
-            <div className="h-8 w-px bg-white/10"></div>
-            <div className="text-center px-2">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase">Categories</p>
-              <p className="text-lg font-extrabold text-indigo-300">{CATEGORY_DEFINITIONS.length}</p>
+            <div className="h-6 w-px bg-[#E5E5E5]"></div>
+            <div className="text-center px-3">
+              <p className="text-[10px] text-[#6B6B6B] font-bold uppercase">Resolution Rate</p>
+              <p className="text-base font-extrabold text-[#111111]">{resolutionRate}%</p>
             </div>
-            <div className="h-8 w-px bg-white/10"></div>
-            <div className="text-center px-2">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase">Departments</p>
-              <p className="text-lg font-extrabold text-cyan-300">{DEPARTMENT_LIST.length}</p>
+            <div className="h-6 w-px bg-[#E5E5E5]"></div>
+            <div className="text-center px-3">
+              <p className="text-[10px] text-[#6B6B6B] font-bold uppercase">Active Depts</p>
+              <p className="text-base font-extrabold text-[#FF6B00]">{DEPARTMENT_LIST.length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Grid Layout for Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Grid for Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* CHART 1: Category Bar Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        {/* CHART 1: Category Distribution Bar Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <Tag className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-lg bg-[#FFF1E6] text-[#FF6B00] flex items-center justify-center border border-[#FF6B00]/20">
+                  <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900">Complaints by Category</h4>
-                  <p className="text-xs text-slate-500">Distribution across civic issue types</p>
+                  <h4 className="text-sm font-extrabold text-[#111111]">Complaints by Category</h4>
+                  <p className="text-[11px] text-[#6B6B6B]">Distribution across municipal issue types</p>
                 </div>
               </div>
             </div>
 
-            <div className="h-72 w-full mt-4">
+            <div className="h-64 w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={categoryChartData}
-                  margin={{ top: 20, right: 20, left: -10, bottom: 20 }}
+                  margin={{ top: 15, right: 15, left: -15, bottom: 15 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F5F5F5" />
                   <XAxis
                     dataKey="category"
-                    tick={{ fill: "#64748B", fontSize: 12, fontWeight: 500 }}
-                    axisLine={{ stroke: "#CBD5E1" }}
+                    tick={{ fill: "#6B6B6B", fontSize: 11, fontWeight: 600 }}
+                    axisLine={{ stroke: "#E5E5E5" }}
                     tickLine={false}
                   />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fill: "#64748B", fontSize: 12 }}
-                    axisLine={{ stroke: "#CBD5E1" }}
+                    tick={{ fill: "#6B6B6B", fontSize: 11 }}
+                    axisLine={{ stroke: "#E5E5E5" }}
                     tickLine={false}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar
                     dataKey="count"
                     name="Complaints"
-                    radius={[8, 8, 0, 0]}
-                    barSize={40}
+                    radius={[6, 6, 0, 0]}
+                    barSize={36}
                   >
                     {categoryChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -193,44 +196,44 @@ export default function AdminAnalyticsView({ complaints = [] }) {
             </div>
           </div>
 
-          {/* Mini Category Chips Footer */}
-          <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {/* Mini Category Chips */}
+          <div className="pt-3 border-t border-[#E5E5E5] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             {categoryChartData.map((cat) => (
-              <div key={cat.category} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.fill }}></span>
+              <div key={cat.category} className="bg-[#F5F5F5] p-2 rounded-xl border border-[#E5E5E5] flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold text-[#111111] text-[11px]">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.fill }}></span>
                   {cat.category}
                 </span>
-                <span className="font-bold text-slate-900">{cat.count}</span>
+                <span className="font-extrabold text-[#111111] text-xs">{cat.count}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* CHART 2: Status Breakdown Pie Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        {/* CHART 2: Status Breakdown Donut Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                  <PieIcon className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-lg bg-[#111111] text-white flex items-center justify-center">
+                  <PieIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-base font-bold text-slate-900">Complaints by Status</h4>
-                  <p className="text-xs text-slate-500">Proportion of Pending, In Progress, and Resolved</p>
+                  <h4 className="text-sm font-extrabold text-[#111111]">Complaints by Status</h4>
+                  <p className="text-[11px] text-[#6B6B6B]">Proportion of Pending, In Progress, and Resolved</p>
                 </div>
               </div>
             </div>
 
-            <div className="h-72 w-full mt-4 relative">
+            <div className="h-64 w-full mt-4 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={statusChartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={65}
-                    outerRadius={95}
+                    innerRadius={60}
+                    outerRadius={85}
                     paddingAngle={4}
                     dataKey="value"
                     nameKey="name"
@@ -242,55 +245,47 @@ export default function AdminAnalyticsView({ complaints = [] }) {
                   <Tooltip content={<CustomTooltip />} />
                   <Legend
                     verticalAlign="bottom"
-                    height={36}
+                    height={32}
                     iconType="circle"
-                    formatter={(value) => <span className="text-xs font-semibold text-slate-700 px-1">{value}</span>}
+                    formatter={(value) => <span className="text-[11px] font-bold text-[#111111] px-1">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* Donut Center Label */}
+              {/* Donut Center Number */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                <span className="text-2xl font-extrabold text-slate-900">{totalComplaintsCount}</span>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total</span>
+                <span className="text-xl font-extrabold text-[#111111]">{totalComplaintsCount}</span>
+                <span className="text-[9px] uppercase font-bold text-[#6B6B6B] tracking-wider">Total</span>
               </div>
             </div>
           </div>
 
           {/* Status Breakdown Legend Detail */}
-          <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="bg-amber-50/60 p-2.5 rounded-xl border border-amber-100">
-              <div className="flex items-center gap-1 text-amber-700 font-semibold mb-0.5">
-                <Clock className="w-3.5 h-3.5" /> Pending
-              </div>
-              <p className="text-lg font-bold text-amber-900">
+          <div className="pt-3 border-t border-[#E5E5E5] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="bg-[#F5F5F5] p-2 rounded-xl border border-[#E5E5E5]">
+              <span className="text-[10px] text-[#6B6B6B] font-bold block">Pending</span>
+              <p className="text-base font-extrabold text-[#111111]">
                 {statusChartData.find(s => s.name === "Pending")?.value || 0}
               </p>
             </div>
 
-            <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100">
-              <div className="flex items-center gap-1 text-blue-700 font-semibold mb-0.5">
-                <Clock className="w-3.5 h-3.5 animate-pulse" /> In Progress
-              </div>
-              <p className="text-lg font-bold text-blue-900">
+            <div className="bg-[#FFF1E6] p-2 rounded-xl border border-[#FF6B00]/30">
+              <span className="text-[10px] text-[#FF6B00] font-bold block">In Progress</span>
+              <p className="text-base font-extrabold text-[#111111]">
                 {statusChartData.find(s => s.name === "In Progress")?.value || 0}
               </p>
             </div>
 
-            <div className="bg-purple-50/60 p-2.5 rounded-xl border border-purple-100">
-              <div className="flex items-center gap-1 text-purple-700 font-semibold mb-0.5">
-                <ShieldCheck className="w-3.5 h-3.5 animate-pulse" /> Pending Verify
-              </div>
-              <p className="text-lg font-bold text-purple-900">
+            <div className="bg-[#111111] p-2 rounded-xl text-white">
+              <span className="text-[10px] text-[#E5E5E5] font-bold block">Verification</span>
+              <p className="text-base font-extrabold text-white">
                 {statusChartData.find(s => s.name === "Pending Verification")?.value || 0}
               </p>
             </div>
 
-            <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
-              <div className="flex items-center gap-1 text-emerald-700 font-semibold mb-0.5">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Resolved
-              </div>
-              <p className="text-lg font-bold text-emerald-900">
+            <div className="bg-[#F5F5F5] p-2 rounded-xl border border-[#E5E5E5]">
+              <span className="text-[10px] text-[#6B6B6B] font-bold block">Resolved</span>
+              <p className="text-base font-extrabold text-[#111111]">
                 {statusChartData.find(s => s.name === "Resolved")?.value || 0}
               </p>
             </div>
@@ -298,44 +293,44 @@ export default function AdminAnalyticsView({ complaints = [] }) {
         </div>
 
         {/* CHART 3: Department Workload Bar Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-6 rounded-2xl border border-[#E5E5E5] shadow-2xs lg:col-span-2">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
-                <Building2 className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-[#F5F5F5] text-[#111111] flex items-center justify-center border border-[#E5E5E5]">
+                <Building2 className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-base font-bold text-slate-900">Department Workload Distribution</h4>
-                <p className="text-xs text-slate-500">Active workload load-balancing across civic authorities</p>
+                <h4 className="text-sm font-extrabold text-[#111111]">Department Workload Distribution</h4>
+                <p className="text-[11px] text-[#6B6B6B]">Active municipal task assignments and department capacities</p>
               </div>
             </div>
           </div>
 
-          <div className="h-72 w-full mt-4">
+          <div className="h-64 w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={departmentChartData}
-                margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                margin={{ top: 15, right: 20, left: -10, bottom: 15 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F5F5F5" />
                 <XAxis
                   dataKey="department"
-                  tick={{ fill: "#64748B", fontSize: 12, fontWeight: 500 }}
-                  axisLine={{ stroke: "#CBD5E1" }}
+                  tick={{ fill: "#6B6B6B", fontSize: 11, fontWeight: 600 }}
+                  axisLine={{ stroke: "#E5E5E5" }}
                   tickLine={false}
                 />
                 <YAxis
                   allowDecimals={false}
-                  tick={{ fill: "#64748B", fontSize: 12 }}
-                  axisLine={{ stroke: "#CBD5E1" }}
+                  tick={{ fill: "#6B6B6B", fontSize: 11 }}
+                  axisLine={{ stroke: "#E5E5E5" }}
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
                   dataKey="count"
                   name="Assigned Complaints"
-                  radius={[8, 8, 0, 0]}
-                  barSize={48}
+                  radius={[6, 6, 0, 0]}
+                  barSize={40}
                 >
                   {departmentChartData.map((entry, index) => (
                     <Cell key={`dept-cell-${index}`} fill={entry.fill} />
@@ -346,17 +341,17 @@ export default function AdminAnalyticsView({ complaints = [] }) {
           </div>
 
           {/* Department Breakdown Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-[#E5E5E5]">
             {departmentChartData.map((dept) => (
-              <div key={dept.department} className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between">
+              <div key={dept.department} className="bg-[#F5F5F5] p-2.5 rounded-xl border border-[#E5E5E5] flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dept.fill }}></span>
+                  <p className="text-[11px] font-bold text-[#111111] flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dept.fill }}></span>
                     {dept.department}
                   </p>
-                  <p className="text-xs text-slate-400 mt-0.5">Assigned Tasks</p>
+                  <p className="text-[10px] text-[#6B6B6B]">Assigned Tasks</p>
                 </div>
-                <span className="text-xl font-extrabold text-slate-900">{dept.count}</span>
+                <span className="text-base font-extrabold text-[#111111]">{dept.count}</span>
               </div>
             ))}
           </div>
