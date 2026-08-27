@@ -6,19 +6,18 @@ import DepartmentView from "./components/DepartmentView";
 import { INITIAL_COMPLAINTS } from "./data/initialComplaints";
 import { getDepartmentForCategory } from "./utils/departmentAssigner";
 import api from "./services/api";
-import { Info, Code, Workflow, Database } from "lucide-react";
+import { Code, Activity } from "lucide-react";
 
 /**
  * App Component - Root Application Container
  * 
- * Integrated Architecture:
- * React Frontend -> Express REST API -> PostgreSQL Relational Database
+ * Premium Monochrome + Signature Orange (#FF6B00) Accent System
  */
 export default function App() {
   // Navigation Tab State ('citizen' | 'admin' | 'department')
   const [activeTab, setActiveTab] = useState("citizen");
 
-  // Shared Complaints Array State (Initialized with sample data, synchronized with PostgreSQL API)
+  // Shared Complaints Array State
   const [complaints, setComplaints] = useState(INITIAL_COMPLAINTS);
   const [isLoading, setIsLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
@@ -40,7 +39,7 @@ export default function App() {
         setDbConnected(true);
       }
     } catch (err) {
-      console.warn("ℹ️ [API Notice] Backend not reachable yet, running with resilient state:", err.message);
+      console.warn("ℹ️ [API Notice] Backend running in resilient state:", err.message);
     } finally {
       setIsLoading(false);
     }
@@ -52,12 +51,14 @@ export default function App() {
 
   /**
    * Handler to Add a New Complaint (Called by CitizenView)
-   * Sends POST to /api/complaints in PostgreSQL and updates state
    */
   const handleAddComplaint = async (newComplaintData) => {
     const autoAssignedDept = getDepartmentForCategory(newComplaintData.category);
     const now = new Date();
-    const formattedDate = now.toLocaleDateString() + " " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedDate =
+      now.toLocaleDateString() +
+      " " +
+      now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const generatedId = `COMP-${Math.floor(100 + Math.random() * 900)}`;
 
     const baseLat = 23.3441;
@@ -65,12 +66,14 @@ export default function App() {
     const generatedLat = Number((baseLat + (Math.random() - 0.5) * 0.05).toFixed(5));
     const generatedLng = Number((baseLng + (Math.random() - 0.5) * 0.05).toFixed(5));
 
-    const finalLat = (newComplaintData.lat !== null && newComplaintData.lat !== undefined)
-      ? newComplaintData.lat
-      : generatedLat;
-    const finalLng = (newComplaintData.lng !== null && newComplaintData.lng !== undefined)
-      ? newComplaintData.lng
-      : generatedLng;
+    const finalLat =
+      newComplaintData.lat !== null && newComplaintData.lat !== undefined
+        ? newComplaintData.lat
+        : generatedLat;
+    const finalLng =
+      newComplaintData.lng !== null && newComplaintData.lng !== undefined
+        ? newComplaintData.lng
+        : generatedLng;
 
     const payload = {
       title: `${newComplaintData.category.toUpperCase()} Issue Reported`,
@@ -94,7 +97,7 @@ export default function App() {
         return res.data;
       }
     } catch (err) {
-      console.warn("⚠️ [API Notice] Failed to save to PostgreSQL, saving to local state fallback:", err.message);
+      console.warn("⚠️ [API Notice] Saving to resilient local state:", err.message);
     }
 
     // Resilient fallback to local state
@@ -114,7 +117,6 @@ export default function App() {
 
   /**
    * Handler to Upvote a Complaint (Called by CitizenView)
-   * Sends atomic POST to /api/complaints/:id/upvote (enforced by UNIQUE constraint)
    */
   const handleUpvote = async (complaintId) => {
     try {
@@ -126,8 +128,14 @@ export default function App() {
             item.id === complaintId || item.ticketId === complaintId || item.dbId === complaintId
               ? {
                   ...item,
-                  upvotes: updatedInfo.upvoteCount !== undefined ? updatedInfo.upvoteCount : updatedInfo.upvotes,
-                  upvoteCount: updatedInfo.upvoteCount !== undefined ? updatedInfo.upvoteCount : updatedInfo.upvotes,
+                  upvotes:
+                    updatedInfo.upvoteCount !== undefined
+                      ? updatedInfo.upvoteCount
+                      : updatedInfo.upvotes,
+                  upvoteCount:
+                    updatedInfo.upvoteCount !== undefined
+                      ? updatedInfo.upvoteCount
+                      : updatedInfo.upvotes,
                   priorityScore: updatedInfo.priorityScore || item.priorityScore,
                   upvoteUserIds: updatedInfo.upvoteUserIds || item.upvoteUserIds,
                 }
@@ -146,9 +154,7 @@ export default function App() {
     // Local fallback
     setComplaints((prev) =>
       prev.map((item) =>
-        item.id === complaintId
-          ? { ...item, upvotes: (item.upvotes || 0) + 1 }
-          : item
+        item.id === complaintId ? { ...item, upvotes: (item.upvotes || 0) + 1 } : item
       )
     );
     return { success: true, alreadyUpvoted: false };
@@ -167,9 +173,7 @@ export default function App() {
       if (res && res.data) {
         setComplaints((prev) =>
           prev.map((item) =>
-            item.id === complaintId || item.ticketId === complaintId
-              ? res.data
-              : item
+            item.id === complaintId || item.ticketId === complaintId ? res.data : item
           )
         );
         return;
@@ -203,9 +207,7 @@ export default function App() {
       if (res && res.data) {
         setComplaints((prev) =>
           prev.map((item) =>
-            item.id === complaintId || item.ticketId === complaintId
-              ? res.data
-              : item
+            item.id === complaintId || item.ticketId === complaintId ? res.data : item
           )
         );
         return;
@@ -231,17 +233,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-white text-[#111111] flex flex-col font-sans antialiased selection:bg-[#FFF1E6] selection:text-[#FF6B00]">
       
-      {/* Top Navigation Bar */}
+      {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         totalCount={complaints.length}
       />
 
-      {/* Main View Area - Conditional Rendering based on activeTab */}
-      <main className="flex-1">
+      {/* Main View Container */}
+      <main className="flex-1 bg-white">
         {activeTab === "citizen" && (
           <CitizenView
             complaints={complaints}
@@ -271,24 +273,34 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer Banner */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 px-4">
+      {/* Clean Monochrome Footer */}
+      <footer className="bg-white border-t border-[#E5E5E5] text-[#6B6B6B] py-6 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
           
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-blue-400" />
-            <span>
-              <strong>Database Architecture:</strong> PostgreSQL Persistent Database & Express REST API with Atomic Upvotes.
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-[#111111] text-[#FF6B00] flex items-center justify-center font-bold">
+              <Activity className="w-3.5 h-3.5" />
+            </div>
+            <span className="font-bold text-[#111111]">
+              CivicPulse Platform
+            </span>
+            <span className="text-[#E5E5E5]">|</span>
+            <span className="text-[#6B6B6B]">
+              Citizen Reporting, Priority Scoring & Two-Stage Resolution Audit
             </span>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <span className="flex items-center gap-1 text-slate-300">
-              <Code className="w-3.5 h-3.5 text-blue-400" /> React + Vite + Node/Express + PostgreSQL
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#F5F5F5] text-[#111111] border border-[#E5E5E5]">
+              <Code className="w-3 h-3 text-[#FF6B00]" /> React 19 + Vite + Node
             </span>
-            <span className="text-slate-600">|</span>
-            <span className={dbConnected ? "text-emerald-400 font-medium flex items-center gap-1" : "text-slate-400"}>
-              {dbConnected ? "● PostgreSQL Live" : "○ Resilient DB Engine"}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+              dbConnected
+                ? "bg-[#FFF1E6] text-[#FF6B00] border-[#FF6B00]/30"
+                : "bg-[#F5F5F5] text-[#111111] border-[#E5E5E5]"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? "bg-[#FF6B00] animate-pulse" : "bg-[#6B6B6B]"}`}></span>
+              {dbConnected ? "PostgreSQL Synchronized" : "Local Resilient Engine"}
             </span>
           </div>
 

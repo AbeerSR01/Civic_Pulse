@@ -50,17 +50,17 @@ export function calculatePriority(complaint) {
   const score = upvotes * 3 + daysOpen * 2 + reopenPenalty;
 
   let label = "Low";
-  let colorClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
-  let dotColor = "bg-emerald-500";
+  let colorClass = "bg-[#F5F5F5] text-[#6B6B6B] border-[#E5E5E5]";
+  let dotColor = "bg-[#6B6B6B]";
 
   if (score > 15) {
     label = "High";
-    colorClass = "bg-rose-100 text-rose-800 border-rose-200 font-bold";
-    dotColor = "bg-rose-500 animate-pulse";
+    colorClass = "bg-[#FFF1E6] text-[#FF6B00] border-[#FF6B00]/30 font-bold";
+    dotColor = "bg-[#FF6B00] animate-pulse";
   } else if (score > 7) {
     label = "Medium";
-    colorClass = "bg-amber-100 text-amber-800 border-amber-200";
-    dotColor = "bg-amber-500";
+    colorClass = "bg-[#F5F5F5] text-[#111111] border-[#E5E5E5] font-semibold";
+    dotColor = "bg-[#111111]";
   }
 
   return {
