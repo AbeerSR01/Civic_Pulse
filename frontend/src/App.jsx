@@ -63,17 +63,15 @@ export default function App() {
 
     const baseLat = 23.3441;
     const baseLng = 85.3096;
-    const generatedLat = Number((baseLat + (Math.random() - 0.5) * 0.05).toFixed(5));
-    const generatedLng = Number((baseLng + (Math.random() - 0.5) * 0.05).toFixed(5));
 
     const finalLat =
       newComplaintData.lat !== null && newComplaintData.lat !== undefined
-        ? newComplaintData.lat
-        : generatedLat;
+        ? Number(newComplaintData.lat)
+        : baseLat;
     const finalLng =
       newComplaintData.lng !== null && newComplaintData.lng !== undefined
-        ? newComplaintData.lng
-        : generatedLng;
+        ? Number(newComplaintData.lng)
+        : baseLng;
 
     const payload = {
       title: `${newComplaintData.category.toUpperCase()} Issue Reported`,
@@ -92,12 +90,42 @@ export default function App() {
     try {
       const res = await api.createComplaint(payload, citizenName);
       if (res && res.data) {
-        setComplaints((prev) => [res.data, ...prev]);
+        // If an active duplicate complaint was detected in PostgreSQL
+        if (res.data.isDuplicate && res.data.duplicateComplaint) {
+          return {
+            isDuplicate: true,
+            duplicateComplaint: res.data.duplicateComplaint,
+          };
+        }
+
+        const createdComplaint = res.data;
+        setComplaints((prev) => [createdComplaint, ...prev]);
         setDbConnected(true);
-        return res.data;
+        return {
+          isDuplicate: false,
+          complaint: createdComplaint,
+        };
       }
     } catch (err) {
       console.warn("⚠️ [API Notice] Saving to resilient local state:", err.message);
+    }
+
+    // Local duplicate check fallback (in case API call failed or offline)
+    const localDuplicate = complaints.find(
+      (c) =>
+        c.status !== "Resolved" &&
+        c.category?.toLowerCase() === payload.category?.toLowerCase() &&
+        (c.location?.toLowerCase().trim() === payload.location?.toLowerCase().trim() ||
+          c.address?.toLowerCase().trim() === payload.address?.toLowerCase().trim() ||
+          (c.location && payload.location && (c.location.toLowerCase().includes(payload.location.toLowerCase()) || payload.location.toLowerCase().includes(c.location.toLowerCase()))) ||
+          (c.lat && payload.lat && Math.abs(c.lat - payload.lat) < 0.001 && Math.abs(c.lng - payload.lng) < 0.001))
+    );
+
+    if (localDuplicate) {
+      return {
+        isDuplicate: true,
+        duplicateComplaint: localDuplicate,
+      };
     }
 
     // Resilient fallback to local state
@@ -105,6 +133,7 @@ export default function App() {
       id: generatedId,
       ...payload,
       upvotes: 0,
+      upvoteCount: 0,
       createdAt: formattedDate,
       resolutionPhotoUrl: null,
       reopenCount: 0,
@@ -112,7 +141,7 @@ export default function App() {
     };
 
     setComplaints((prev) => [localComplaint, ...prev]);
-    return localComplaint;
+    return { isDuplicate: false, complaint: localComplaint };
   };
 
   /**
@@ -123,26 +152,25 @@ export default function App() {
       const res = await api.upvoteComplaint(complaintId, citizenName);
       if (res && res.data) {
         const updatedInfo = res.data;
+        const newCount =
+          updatedInfo.upvoteCount !== undefined
+            ? updatedInfo.upvoteCount
+            : updatedInfo.upvotes;
+
         setComplaints((prev) =>
           prev.map((item) =>
             item.id === complaintId || item.ticketId === complaintId || item.dbId === complaintId
               ? {
                   ...item,
-                  upvotes:
-                    updatedInfo.upvoteCount !== undefined
-                      ? updatedInfo.upvoteCount
-                      : updatedInfo.upvotes,
-                  upvoteCount:
-                    updatedInfo.upvoteCount !== undefined
-                      ? updatedInfo.upvoteCount
-                      : updatedInfo.upvotes,
+                  upvotes: newCount,
+                  upvoteCount: newCount,
                   priorityScore: updatedInfo.priorityScore || item.priorityScore,
                   upvoteUserIds: updatedInfo.upvoteUserIds || item.upvoteUserIds,
                 }
               : item
           )
         );
-        return { success: true, alreadyUpvoted: false };
+        return { success: true, alreadyUpvoted: false, upvoteCount: newCount, data: updatedInfo };
       }
     } catch (err) {
       if (err.status === 409 || err.message?.includes("already upvoted")) {
@@ -152,12 +180,17 @@ export default function App() {
     }
 
     // Local fallback
+    let localNewCount = 1;
     setComplaints((prev) =>
-      prev.map((item) =>
-        item.id === complaintId ? { ...item, upvotes: (item.upvotes || 0) + 1 } : item
-      )
+      prev.map((item) => {
+        if (item.id === complaintId || item.ticketId === complaintId || item.dbId === complaintId) {
+          localNewCount = (item.upvotes || item.upvoteCount || 0) + 1;
+          return { ...item, upvotes: localNewCount, upvoteCount: localNewCount };
+        }
+        return item;
+      })
     );
-    return { success: true, alreadyUpvoted: false };
+    return { success: true, alreadyUpvoted: false, upvoteCount: localNewCount };
   };
 
   /**
