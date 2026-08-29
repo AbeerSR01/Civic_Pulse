@@ -19,9 +19,12 @@ import {
   onComplaintUpvotedHook,
 } from "../services/hooks/businessLogicHooks.js";
 
+// Configurable duplicate complaint search radius in meters
+export const DUPLICATE_COMPLAINT_RADIUS_METERS = 100;
+
 /**
  * @route   POST /api/complaints
- * @desc    Submit a new civic complaint
+ * @desc    Submit a new civic complaint (checks for active duplicates within radius)
  * @access  Public / Optional Auth
  */
 export async function createComplaintHandler(req, res, next) {
@@ -51,6 +54,28 @@ export async function createComplaintHandler(req, res, next) {
 
     if (!finalAddress) {
       throw new ApiError(400, "Location address is required");
+    }
+
+    // Check for existing active duplicate in PostgreSQL within proximity radius or matching address
+    const existingDuplicate = await Complaint.findActiveDuplicate({
+      category,
+      lat: finalLat,
+      lng: finalLng,
+      address: finalAddress,
+      radiusMeters: DUPLICATE_COMPLAINT_RADIUS_METERS,
+    });
+
+    if (existingDuplicate) {
+      return res.status(200).json(
+        new ApiResponse(
+          200,
+          {
+            isDuplicate: true,
+            duplicateComplaint: existingDuplicate,
+          },
+          "A matching active complaint already exists in this area."
+        )
+      );
     }
 
     // Fallback title generation
@@ -106,7 +131,14 @@ export async function createComplaintHandler(req, res, next) {
     await onComplaintCreatedHook(complaint, req.user);
 
     return res.status(201).json(
-      new ApiResponse(201, complaint, "Complaint submitted and auto-routed successfully")
+      new ApiResponse(
+        201,
+        {
+          isDuplicate: false,
+          ...complaint,
+        },
+        "Complaint submitted and auto-routed successfully"
+      )
     );
   } catch (error) {
     next(error);

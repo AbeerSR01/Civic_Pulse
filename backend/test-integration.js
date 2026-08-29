@@ -118,8 +118,84 @@ async function runTests() {
   });
   console.log(`   ✅ Status updated to: ${updatedStatus.status}, Proof: ${updatedStatus.resolutionProofUrl}`);
 
+  // 10. Duplicate Detection Tests
+  console.log("\n9️⃣ Testing Duplicate Complaint Detection (Proximity & Category Match)...");
+  
+  // Test A: Nearby same category (should MATCH)
+  const duplicateMatch = await Complaint.findActiveDuplicate({
+    category: "pothole",
+    lat: 23.34415, // ~5 meters away
+    lng: 85.30965,
+    radiusMeters: 100,
+  });
+  if (!duplicateMatch || duplicateMatch.ticketId !== "COMP-TEST-101") {
+    throw new Error("Duplicate detection failed to find nearby active complaint!");
+  }
+  console.log(`   ✅ Nearby same category correctly matched duplicate: Ticket ${duplicateMatch.ticketId}`);
+
+  // Test B: Different category (should NOT match)
+  const differentCategory = await Complaint.findActiveDuplicate({
+    category: "garbage",
+    lat: 23.34415,
+    lng: 85.30965,
+    radiusMeters: 100,
+  });
+  if (differentCategory !== null) {
+    throw new Error("Duplicate detection wrongly matched different category!");
+  }
+  console.log("   ✅ Different category at same location correctly rejected as duplicate.");
+
+  // Test C: Far away (> 100m, e.g. 5km away, should NOT match)
+  const farAway = await Complaint.findActiveDuplicate({
+    category: "pothole",
+    lat: 23.3900,
+    lng: 85.3500,
+    radiusMeters: 100,
+  });
+  if (farAway !== null) {
+    throw new Error("Duplicate detection wrongly matched far-away complaint!");
+  }
+  console.log("   ✅ Far-away complaint (>100m) correctly rejected as duplicate.");
+
+  // Test D: Resolved complaint (should NOT match)
+  await Complaint.updateStatus(complaint.id, {
+    status: "Resolved",
+    resolutionProofUrl: "https://example.com/proof.jpg",
+  });
+  const resolvedMatch = await Complaint.findActiveDuplicate({
+    category: "pothole",
+    lat: 23.34415,
+    lng: 85.30965,
+    radiusMeters: 100,
+  });
+  if (resolvedMatch !== null) {
+    throw new Error("Duplicate detection wrongly matched a Resolved complaint!");
+  }
+  console.log("   ✅ Resolved complaint correctly ignored for duplicate detection.");
+
+  // Test E: Active complaint with typed address matching (e.g. Kanpur street)
+  const compKanpur = await Complaint.create({
+    ticketId: "COMP-TEST-KANPUR-1",
+    title: "Streetlight Fault",
+    category: "streetlight",
+    description: "Faulty broken pole light",
+    address: "Kanpur, Kanpur Nagar, Uttar Pradesh, 208012, India",
+    lat: 26.4499,
+    lng: 80.3319,
+    status: "Pending",
+    department: "Electrical",
+  });
+  const kanpurDuplicate = await Complaint.findActiveDuplicate({
+    category: "streetlight",
+    address: "Kanpur, Kanpur Nagar, Uttar Pradesh, 208012, India",
+  });
+  if (!kanpurDuplicate || kanpurDuplicate.ticketId !== "COMP-TEST-KANPUR-1") {
+    throw new Error("Address text duplicate detection failed for Kanpur!");
+  }
+  console.log(`   ✅ Address text duplicate matched successfully: Ticket ${kanpurDuplicate.ticketId}`);
+
   console.log("\n================================================================");
-  console.log("🎉 ALL INTEGRATION & DATABASE CONSTRAINT TESTS PASSED (100%)");
+  console.log("🎉 ALL INTEGRATION, UPVOTE & DUPLICATE DETECTION TESTS PASSED (100%)");
   console.log("================================================================\n");
 
   process.exit(0);

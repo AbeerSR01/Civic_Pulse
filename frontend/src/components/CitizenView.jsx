@@ -10,6 +10,8 @@ import {
   ThumbsUp,
   Navigation,
   AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
   User,
   ArrowRight,
   ShieldCheck,
@@ -38,6 +40,9 @@ export default function CitizenView({
 }) {
   // Input state for sign-in
   const [loginInput, setLoginInput] = useState("");
+
+  // Duplicate match result state (Temporary UI State: null = normalMode, object = duplicateMode)
+  const [duplicateResult, setDuplicateResult] = useState(null);
 
   // Form input fields
   const [category, setCategory] = useState("pothole");
@@ -99,6 +104,24 @@ export default function CitizenView({
       localStorage.setItem(`civic_upvotes_${userName || "default"}`, JSON.stringify(updated));
     } catch {
       // ignore
+    }
+
+    // If duplicateResult is currently active and matches this complaint, update its upvote count locally
+    if (
+      duplicateResult &&
+      (duplicateResult.id === complaintId ||
+        duplicateResult.ticketId === complaintId ||
+        duplicateResult.dbId === complaintId)
+    ) {
+      setDuplicateResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              upvotes: (prev.upvotes || prev.upvoteCount || 0) + 1,
+              upvoteCount: (prev.upvoteCount || prev.upvotes || 0) + 1,
+            }
+          : prev
+      );
     }
 
     if (result?.alreadyUpvoted) {
@@ -266,7 +289,7 @@ export default function CitizenView({
     setPhotoPreview(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!description.trim() || !location.trim()) {
@@ -274,16 +297,44 @@ export default function CitizenView({
       return;
     }
 
+    let finalLat = coords ? coords.lat : null;
+    let finalLng = coords ? coords.lng : null;
+
+    // If GPS was not clicked, resolve real coordinates from the typed address text
+    if (!finalLat && location.trim()) {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location.trim())}&limit=1`,
+          { headers: { Accept: "application/json" } }
+        );
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData[0]) {
+            finalLat = Number(geoData[0].lat);
+            finalLng = Number(geoData[0].lon);
+          }
+        }
+      } catch {
+        // network fallback
+      }
+    }
+
     const newComplaint = {
       category: category,
       description: description.trim(),
       location: location.trim(),
       photoUrl: photoPreview || null,
-      lat: coords ? coords.lat : null,
-      lng: coords ? coords.lng : null,
+      lat: finalLat,
+      lng: finalLng,
     };
 
-    onAddComplaint(newComplaint);
+    const result = await onAddComplaint(newComplaint);
+
+    // If an active duplicate was detected in PostgreSQL database
+    if (result && result.isDuplicate && result.duplicateComplaint) {
+      setDuplicateResult(result.duplicateComplaint);
+      return;
+    }
 
     setSuccessMessage("Issue successfully reported! Routed to the respective city department.");
     setTimeout(() => setSuccessMessage(""), 5000);
@@ -389,8 +440,174 @@ export default function CitizenView({
         </div>
       )}
 
-      {/* Main Grid: Form Left, Feed Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Content Area: State 2 (Duplicate Mode) vs State 1 (Normal Mode) */}
+      {duplicateResult ? (
+        /* ================= STATE 2: DUPLICATE DETECTED ================= */
+        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in py-2">
+          
+          {/* Warning Banner */}
+          <div className="bg-[#FFF1E6] border-2 border-[#FF6B00] rounded-2xl p-5 sm:p-6 shadow-xs space-y-3">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-[#FF6B00] text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-extrabold text-[#111111] tracking-tight">
+                  ⚠️ This complaint already exists
+                </h3>
+                <p className="text-xs text-[#6B6B6B] leading-relaxed">
+                  A matching active civic issue has already been reported in this exact area. To avoid duplication and speed up municipal resolution, you can upvote this existing complaint to raise its priority score in the department resolution queue.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Single Matching Complaint Card */}
+          {(() => {
+            const priority = calculatePriority(duplicateResult);
+            const overdue = isSLAOverdue(duplicateResult);
+            const isAlreadyUpvoted =
+              votedIds.includes(duplicateResult.id) ||
+              votedIds.includes(duplicateResult.ticketId) ||
+              votedIds.includes(duplicateResult.dbId);
+
+            return (
+              <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#E5E5E5] shadow-xs space-y-5">
+                
+                {/* Header Row: ID, Category, Priority, Status */}
+                <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap pb-3 border-b border-[#E5E5E5]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-1 rounded-md border border-[#E5E5E5]">
+                      {duplicateResult.id || duplicateResult.ticketId}
+                    </span>
+
+                    <span className="text-sm font-extrabold text-[#111111] capitalize">
+                      {CATEGORY_LABELS[duplicateResult.category] || duplicateResult.category}
+                    </span>
+
+                    {/* Priority Score Tag */}
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs border ${priority.colorClass}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${priority.dotColor}`}></span>
+                      {priority.label} ({priority.score} pts)
+                    </span>
+
+                    {/* SLA Overdue Badge */}
+                    {overdue && (
+                      <span className="inline-flex items-center gap-1 bg-[#111111] text-[#FF6B00] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[#111111]">
+                        SLA Overdue (&gt;3d)
+                      </span>
+                    )}
+                  </div>
+
+                  <div>{getStatusBadge(duplicateResult.status)}</div>
+                </div>
+
+                {/* Content Row: Photo + Details */}
+                <div className="flex flex-col sm:flex-row gap-4 items-start">
+                  {/* Photo Preview if available */}
+                  {duplicateResult.photoUrl ? (
+                    <div
+                      onClick={() => setLightboxImage(duplicateResult.photoUrl)}
+                      className="w-full sm:w-36 h-32 rounded-xl overflow-hidden bg-[#F5F5F5] flex-shrink-0 border border-[#E5E5E5] cursor-pointer relative group"
+                      title="Click to view full photo"
+                    >
+                      <img
+                        src={duplicateResult.photoUrl}
+                        alt="Issue photo"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        onError={(e) => {
+                          e.target.src =
+                            "https://images.unsplash.com/photo-1590059306054-94a28f7ff282?auto=format&fit=crop&w=300&q=80";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-[#111111]/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full sm:w-36 h-32 rounded-xl bg-[#F5F5F5] flex flex-col items-center justify-center text-[#6B6B6B] flex-shrink-0 border border-[#E5E5E5]">
+                      <ImageIcon className="w-6 h-6 mb-1 text-[#6B6B6B]" />
+                      <span className="text-[11px]">No Photo</span>
+                    </div>
+                  )}
+
+                  {/* Text details */}
+                  <div className="flex-1 space-y-2.5">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#6B6B6B] uppercase tracking-wider block mb-0.5">
+                        Issue Description
+                      </span>
+                      <p className="text-xs sm:text-sm text-[#111111] font-medium leading-relaxed">
+                        {duplicateResult.description}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B6B6B] pt-1">
+                      <span className="flex items-center gap-1.5 font-medium text-[#111111]">
+                        <MapPin className="w-3.5 h-3.5 text-[#FF6B00]" />
+                        {duplicateResult.location || duplicateResult.address}
+                      </span>
+                      <span className="flex items-center gap-1 font-bold text-[#111111] bg-[#F5F5F5] px-2.5 py-0.5 rounded-md border border-[#E5E5E5]">
+                        <Tag className="w-3 h-3 text-[#FF6B00]" />
+                        {duplicateResult.department}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer / Action Controls */}
+                <div className="pt-4 border-t border-[#E5E5E5] flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs text-[#6B6B6B]">
+                    <span className="font-bold text-[#111111] bg-[#F5F5F5] border border-[#E5E5E5] px-2.5 py-1 rounded-lg">
+                      👍 {duplicateResult.upvotes || duplicateResult.upvoteCount || 0} Upvotes
+                    </span>
+                    {duplicateResult.createdAt && (
+                      <span>• Reported {duplicateResult.createdAt}</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    {/* Go Back Button */}
+                    <button
+                      type="button"
+                      onClick={() => setDuplicateResult(null)}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-[#F5F5F5] hover:bg-[#E5E5E5] text-[#111111] text-xs font-bold px-4 py-2.5 rounded-xl border border-[#E5E5E5] transition cursor-pointer active:scale-98"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>← Go Back</span>
+                    </button>
+
+                    {/* Upvote Existing Complaint Button */}
+                    {isAlreadyUpvoted ? (
+                      <div className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-[#F5F5F5] text-[#111111] text-xs font-bold px-4 py-2.5 rounded-xl border border-[#E5E5E5] shadow-2xs">
+                        <Check className="w-3.5 h-3.5 text-[#FF6B00]" />
+                        <span>Upvoted ({duplicateResult.upvotes || duplicateResult.upvoteCount || 0})</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCitizenUpvote(
+                            duplicateResult.id || duplicateResult.ticketId || duplicateResult.dbId
+                          )
+                        }
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-[#FF6B00] hover:bg-[#e55f00] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs hover:shadow transition active:scale-98 cursor-pointer"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <span>👍 Upvote Existing Complaint</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
+
+        </div>
+      ) : (
+        /* ================= STATE 1: NORMAL CITIZEN VIEW ================= */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* LEFT COLUMN: Report Issue Card */}
         <div className="lg:col-span-5">
@@ -883,6 +1100,7 @@ export default function CitizenView({
         </div>
 
       </div>
+      )}
 
       {/* Lightbox Modal */}
       {lightboxImage && (

@@ -124,6 +124,66 @@ export const Complaint = {
   },
 
   /**
+   * Find an existing active complaint matching category and geographic proximity or address
+   */
+  async findActiveDuplicate({ category, lat = null, lng = null, address = null, radiusMeters = 100 }) {
+    if (!category) return null;
+
+    const targetLat = lat !== null && lat !== undefined && !isNaN(Number(lat)) ? Number(lat) : null;
+    const targetLng = lng !== null && lng !== undefined && !isNaN(Number(lng)) ? Number(lng) : null;
+    const targetAddress = address && typeof address === "string" && address.trim().length > 0 ? address.trim() : null;
+
+    const text = `
+      SELECT 
+        c.*,
+        u.name AS reporter_name,
+        u.email AS reporter_email,
+        u.role AS reporter_role,
+        r.name AS resolver_name,
+        r.email AS resolver_email,
+        COALESCE(COUNT(DISTINCT up.id), 0)::int AS upvote_count,
+        COALESCE(ARRAY_AGG(DISTINCT up.user_id) FILTER (WHERE up.user_id IS NOT NULL), '{}') AS upvote_user_ids,
+        CASE 
+          WHEN $1::double precision IS NOT NULL AND c.lat IS NOT NULL AND c.lng IS NOT NULL THEN
+            (6371000 * acos(
+              LEAST(1.0, GREATEST(-1.0,
+                cos(radians($1::double precision)) * cos(radians(c.lat)) * cos(radians(c.lng) - radians($2::double precision)) +
+                sin(radians($1::double precision)) * sin(radians(c.lat))
+              ))
+            ))
+          ELSE 999999
+        END AS distance_meters
+      FROM complaints c
+      LEFT JOIN users u ON c.reported_by = u.id
+      LEFT JOIN users r ON c.resolved_by = r.id
+      LEFT JOIN complaint_upvotes up ON c.id = up.complaint_id
+      WHERE LOWER(c.category) = LOWER($3)
+        AND c.status != 'Resolved'
+        AND (
+          ($1::double precision IS NOT NULL AND c.lat IS NOT NULL AND c.lng IS NOT NULL AND (6371000 * acos(
+            LEAST(1.0, GREATEST(-1.0,
+              cos(radians($1::double precision)) * cos(radians(c.lat)) * cos(radians(c.lng) - radians($2::double precision)) +
+              sin(radians($1::double precision)) * sin(radians(c.lat))
+            ))
+          )) <= $4)
+          OR
+          ($5::text IS NOT NULL AND LOWER(TRIM(c.address)) = LOWER(TRIM($5::text)))
+          OR
+          ($5::text IS NOT NULL AND LENGTH(TRIM($5::text)) >= 5 AND c.address ILIKE '%' || TRIM($5::text) || '%')
+          OR
+          ($5::text IS NOT NULL AND LENGTH(TRIM(c.address)) >= 5 AND TRIM($5::text) ILIKE '%' || TRIM(c.address) || '%')
+        )
+      GROUP BY c.id, u.id, r.id
+      ORDER BY distance_meters ASC, c.id DESC
+      LIMIT 1
+    `;
+
+    const res = await query(text, [targetLat, targetLng, category, radiusMeters, targetAddress]);
+    if (res.rows.length === 0) return null;
+    return this._formatRow(res.rows[0]);
+  },
+
+  /**
    * Find complaints with filters, search, sorting, and pagination
    */
   async findWithFilters({
@@ -302,17 +362,18 @@ export const Complaint = {
     const complaint = await this.findById(idOrTicket);
     if (!complaint) return null;
 
+    const dbId = complaint.dbId || complaint._id || (typeof complaint.id === "number" ? complaint.id : null);
     const previousStatus = complaint.status;
     const isResolved = status === "Resolved";
     const finalResolutionUrl = resolutionProofUrl || complaint.resolutionProofUrl;
 
     const updateText = `
       UPDATE complaints
-      SET status = $1,
-          resolution_proof_url = CASE WHEN $1 = 'Resolved' THEN $2 ELSE resolution_proof_url END,
-          resolved_by = CASE WHEN $1 = 'Resolved' THEN $3 ELSE resolved_by END,
-          resolved_at = CASE WHEN $1 = 'Resolved' THEN CURRENT_TIMESTAMP ELSE resolved_at END,
-          resolution_remarks = CASE WHEN $1 = 'Resolved' THEN $4 ELSE resolution_remarks END,
+      SET status = $1::varchar,
+          resolution_proof_url = CASE WHEN $1::text = 'Resolved' THEN $2 ELSE resolution_proof_url END,
+          resolved_by = CASE WHEN $1::text = 'Resolved' THEN $3 ELSE resolved_by END,
+          resolved_at = CASE WHEN $1::text = 'Resolved' THEN CURRENT_TIMESTAMP ELSE resolved_at END,
+          resolution_remarks = CASE WHEN $1::text = 'Resolved' THEN $4 ELSE resolution_remarks END,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
       RETURNING *
@@ -323,7 +384,7 @@ export const Complaint = {
       finalResolutionUrl,
       changedBy,
       remarks || (isResolved ? "Issue resolved." : null),
-      complaint.id,
+      dbId,
     ]);
 
     // Insert history record
@@ -332,7 +393,7 @@ export const Complaint = {
         complaint_id, previous_status, new_status, changed_by, officer_name, remarks, resolution_proof_url
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        complaint.id,
+        dbId,
         previousStatus,
         status,
         changedBy,
